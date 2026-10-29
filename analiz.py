@@ -2,7 +2,10 @@
 import json
 import os
 import logging
+import re
+from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -28,92 +31,252 @@ LANGUAGES = {
     "ru": "Русский",
 }
 
+# Bilinen proje adları için resmî kaynak öncelikleri.
+# Yeni projeler bu sözlüğe eklenebilir.
+PROJECT_SOURCES = {
+    "sentient": {
+        "domains": [
+            "sentient.foundation",
+            "sentientc.ai",
+            "sentient.xyz",
+            "github.com/sentient-agi",
+        ],
+        "queries": [
+            "Sentient Foundation open source AGI",
+            "Sentient AGI official documentation",
+            "Sentient AGI GitHub",
+        ],
+    },
+}
+
+
+def _normalize(text):
+    """Karşılaştırma için metni sadeleştirir."""
+    text = str(text or "").casefold()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _domain(url):
+    """URL'den alan adını çıkarır."""
+    try:
+        return urlparse(url).netloc.casefold().removeprefix("www.")
+    except (ValueError, TypeError):
+        return ""
+
+
+def _project_config(project_name):
+    """Proje adına ait bilinen kaynak ayarlarını getirir."""
+    return PROJECT_SOURCES.get(_normalize(project_name), {})
+
+
+def _relevance_score(project_name, result, config):
+    """Arama sonucunun projeyle alakasına yaklaşık puan verir."""
+    title = _normalize(result.get("baslik", ""))
+    url = (result.get("url") or "").casefold()
+    description = _normalize(result.get("aciklama", ""))
+    domain = _domain(url)
+
+    project = _normalize(project_name)
+    words = [word for word in project.split() if len(word) > 2]
+
+    score = 0
+
+    if project and project in title:
+        score += 5
+    elif project and project in description:
+        score += 3
+
+    if words:
+        matched = sum(
+            1 for word in words
+            if word in title or word in description or word in url
+        )
+        score += min(matched * 2, 5)
+
+    # Bilinen resmî alan adlarını güçlü biçimde önceliklendir.
+    for known in config.get("domains", []):
+        known = known.casefold()
+
+        if known.startswith("github.com/"):
+            if urlparse(url).path.casefold().startswith(
+                "/" + known.split("/", 1)[1]
+            ):
+                score += 10
+                break
+        elif domain == known or domain.endswith("." + known):
+            score += 10
+            break
+
+    if "github.com/" in url:
+        score += 2
+
+    # Sentient ismiyle eşleşen ilgisiz jet sitelerini ele.
+    if _normalize(project_name) == "sentient":
+        unrelated_terms = (
+            "private jet",
+            "jet card",
+            "aviation",
+            "cardholder",
+        )
+        combined = f"{title} {description} {_normalize(url)}"
+        if any(term in combined for term in unrelated_terms):
+            return -100
+
+    return score
+
 
 def webde_ara(proje_adi, max_sonuc=6):
-    """Ücretsiz web araması; DDGS ve GitHub yedek araması."""
-    sorgular = [
+    """
+    Ücretsiz web araması.
+    Sonuçları birleştirir, tekrarları kaldırır ve alaka puanına göre sıralar.
+    Fortytwo API'sini çağırmaz.
+    """
+    proje_adi = (proje_adi or "").strip()
+
+    if not proje_adi:
+        raise ValueError("Arama için proje adı boş olamaz.")
+
+    max_sonuc = max(1, min(int(max_sonuc), 10))
+    config = _project_config(proje_adi)
+
+    sorgular = config.get("queries", [
         f'"{proje_adi}" official website',
         f'"{proje_adi}" documentation GitHub',
-        f'"{proje_adi}" products latest news',
-    ]
+        f'"{proje_adi}" products development',
+        f'"{proje_adi}" latest announcements',
+    ])
 
-    sonuclar = []
-    gorulen_urller = set()
+    bulunanlar = []
     hatalar = []
 
-    def ekle(baslik, url, aciklama):
-        url = (url or "").strip()
-        if not url or url in gorulen_urller:
-            return
-
-        gorulen_urller.add(url)
-        sonuclar.append({
-            "baslik": baslik or "",
-            "url": url,
-            "aciklama": aciklama or "",
-        })
-
-    # Birincil ücretsiz web araması
-    for sorgu in sorgular:
-        try:
-            with DDGS() as ddgs:
-                bulunanlar = list(
-                    ddgs.text(
+    # Ücretsiz metasearch: DDGS, otomatik sağlayıcı seçimiyle çalışır.
+    try:
+        with DDGS() as ddgs:
+            for sorgu in sorgular:
+                try:
+                    results = ddgs.text(
                         sorgu,
                         max_results=max_sonuc,
                         backend="auto",
+                        region="wt-wt",
                     )
-                )
 
-            for sonuc in bulunanlar:
-                ekle(
-                    sonuc.get("title", ""),
-                    sonuc.get("href", ""),
-                    sonuc.get("body", ""),
-                )
+                    for item in results or []:
+                        bulunanlar.append({
+                            "baslik": item.get("title", ""),
+                            "url": item.get("href", ""),
+                            "aciklama": item.get("body", ""),
+                        })
 
-        except Exception as hata:
-            hatalar.append(f"DDGS: {type(hata).__name__}: {hata}")
-            logger.exception("DDGS araması başarısız: %s", sorgu)
+                except Exception as hata:
+                    hatalar.append(
+                        f"DDGS sorgusu başarısız: "
+                        f"{type(hata).__name__}: {hata}"
+                    )
+                    logger.warning(
+                        "DDGS sorgusu başarısız (%s): %s",
+                        sorgu,
+                        hata,
+                    )
 
-    # Yedek: ücretsiz GitHub API'si
-    if len(sonuclar) < 3:
-        try:
-            yanit = requests.get(
-                "https://api.github.com/search/repositories",
-                params={
-                    "q": f'"{proje_adi}"',
-                    "sort": "updated",
-                    "per_page": max_sonuc,
-                },
-                headers={"Accept": "application/vnd.github+json"},
-                timeout=(5, 15),
+    except Exception as hata:
+        hatalar.append(
+            f"DDGS başlatılamadı: {type(hata).__name__}: {hata}"
+        )
+        logger.exception("DDGS başlatılamadı.")
+
+    # Ücretsiz GitHub araması; ek kaynak ve yedek olarak kullanılır.
+    try:
+        github_query = f'"{proje_adi}" in:name,description'
+        response = requests.get(
+            "https://api.github.com/search/repositories",
+            params={
+                "q": github_query,
+                "sort": "updated",
+                "per_page": max_sonuc,
+            },
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "Prey-Open-AGI",
+            },
+            timeout=(5, 15),
+        )
+
+        if response.ok:
+            for repo in response.json().get("items", []):
+                bulunanlar.append({
+                    "baslik": repo.get("full_name", ""),
+                    "url": repo.get("html_url", ""),
+                    "aciklama": repo.get("description", ""),
+                })
+        else:
+            hatalar.append(
+                f"GitHub araması HTTP {response.status_code}"
             )
-            yanit.raise_for_status()
 
-            for repo in yanit.json().get("items", []):
-                ekle(
-                    repo.get("full_name", ""),
-                    repo.get("html_url", ""),
-                    repo.get("description", ""),
-                )
+    except (requests.RequestException, ValueError) as hata:
+        hatalar.append(f"GitHub araması başarısız: {hata}")
+        logger.warning("GitHub araması başarısız: %s", hata)
 
-        except (requests.RequestException, ValueError) as hata:
-            hatalar.append(f"GitHub: {type(hata).__name__}: {hata}")
-            logger.exception("GitHub yedek araması başarısız.")
+    # URL tekrarlarını temizle.
+    benzersiz = {}
+
+    for item in bulunanlar:
+        url = (item.get("url") or "").strip()
+
+        if not url.startswith(("https://", "http://")):
+            continue
+
+        if url not in benzersiz:
+            item["puan"] = _relevance_score(
+                proje_adi, item, config
+            )
+            benzersiz[url] = item
+        else:
+            # Aynı URL farklı sorgularda bulunursa açıklaması daha dolu olanı tut.
+            old = benzersiz[url]
+            if len(item.get("aciklama", "")) > len(
+                old.get("aciklama", "")
+            ):
+                item["aciklama"] = item.get("aciklama", "")
+                item["baslik"] = item.get("baslik") or old.get("baslik", "")
+
+    sirali = sorted(
+        benzersiz.values(),
+        key=lambda item: (
+            item.get("puan", 0),
+            bool(item.get("aciklama")),
+        ),
+        reverse=True,
+    )
+
+    # Düşük alaka puanlı sonuçları ele.
+    ilgili = [item for item in sirali if item["puan"] >= 2]
+
+    if not ilgili and not bulunanlar and hatalar:
+        logger.error("Tüm ücretsiz aramalar başarısız: %s", hatalar)
+        raise RuntimeError(
+            "Web araması sonuç alamadı. "
+            "Arama sağlayıcıları erişilemiyor olabilir."
+        )
+
+    # Puan alanını AI'ye göndermeye gerek yok.
+    sonuclar = [
+        {
+            "baslik": item.get("baslik", ""),
+            "url": item.get("url", ""),
+            "aciklama": item.get("aciklama", ""),
+        }
+        for item in ilgili[:max_sonuc * 2]
+    ]
 
     logger.info(
-        "Web araması tamamlandı. Kaynak sayısı: %s",
+        "Arama tamamlandı: %s ham sonuç, %s ilgili kaynak.",
+        len(bulunanlar),
         len(sonuclar),
     )
 
-    if not sonuclar and hatalar:
-        raise RuntimeError(
-            "Web araması başarısız oldu. "
-            "Ayrıntılar sunucu günlüklerinde."
-        )
-
-    return sonuclar[:max_sonuc * 2]
+    return sonuclar
 
 
 def kayitli_proje_getir(proje_adi):
@@ -130,10 +293,10 @@ def kayitli_proje_getir(proje_adi):
             logger.error("projeler.json bir JSON nesnesi olmalı.")
             return {}
 
-        anahtar = proje_adi.strip().casefold()
+        anahtar = _normalize(proje_adi)
 
         for key, value in projeler.items():
-            if str(key).casefold() == anahtar:
+            if _normalize(key) == anahtar:
                 if isinstance(value, dict):
                     return value
                 return {"veri": value}
@@ -151,7 +314,7 @@ def ai_analizi(
     arama_sonuclari=None,
     dil="tr",
 ):
-    """Fortytwo API kullanarak çok dilli proje araştırma raporu oluşturur."""
+    """Fortytwo API kullanarak çok dilli proje raporu oluşturur."""
 
     if not API_KEY:
         raise RuntimeError(
@@ -176,31 +339,34 @@ def ai_analizi(
 
     if not kaynak_metni:
         kaynak_metni = (
-            "Web aramasından sonuç alınamadı. "
-            "Harici kaynak bulunamadığını açıkça belirt."
+            "Web araması kullanılabilir kaynak döndürmedi. "
+            "Bu durumda araştırmanın sınırlı olduğunu belirt; "
+            "kaynak, ürün, ekip veya token bilgisi uydurma."
         )
 
+    bugun = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
     prompt = f"""
-Sen Prey Open AGI için dikkatli ve tarafsız bir
-açık AGI proje araştırma analistisin.
+Sen Prey Open AGI için açık kaynaklı yapay zekâ projelerini
+inceleyen, dikkatli ve tarafsız bir araştırma analistisin.
 
-Raporun tamamını {LANGUAGES[dil]} dilinde yaz.
-Proje ve ürün isimlerini özgün bırak.
-
+Rapor dili: {LANGUAGES[dil]}
 Proje adı: {proje_adi}
+Analiz tarihi (UTC): {bugun}
 
 ARAŞTIRMA KURALLARI:
-- Yalnızca aşağıdaki kayıtlı veriyi ve arama sonuçlarını kullan.
-- Arama parçacıklarını doğrulanmış gerçek gibi sunma.
-- Kaynakların desteklemediği bilgileri uydurma.
+- Yalnızca sağlanan kayıtlı veriyi ve arama sonuçlarını dayanak al.
+- Arama parçacıklarını bağımsız doğrulanmış gerçek gibi sunma.
+- Sayfaların tamamını okuduğunu iddia etme.
+- Kaynaklar çelişiyorsa çelişkiyi açıkça belirt.
 - Eksik bilgileri "Doğrulanamadı" veya "Veri eksik" diye belirt.
 - Token, fiyat, arz, borsa, ekip ve ortaklık bilgilerini uydurma.
-- Web sayfalarının tamamını okuduğunu iddia etme.
-- Bir projenin açık kaynaklı olmasıyla açık AGI vizyonunu ayrı değerlendir.
-- Kaynak URL'lerini değiştirme veya uydurma.
+- Açık kaynak lisansı ile açık AGI vizyonunu birbirinden ayır.
+- Ürünün canlı, test aşamasında veya yalnızca duyurulmuş olduğunu
+  kanıt yoksa kesin biçimde sınıflandırma.
+- Kaynak URL'lerini aynen kullan; URL uydurma.
 - Yatırım tavsiyesi verme.
-- Raporda analiz tarihi olarak güncel tarihi kullan.
-- Tekrarlanan uyarılardan kaçın ve somut bulgulara odaklan.
+- Raporu somut, okunabilir ve gereksiz tekrarlardan uzak yaz.
 
 BÖLÜMLER:
 1. Yönetici özeti
@@ -216,6 +382,9 @@ BÖLÜMLER:
 11. Genel değerlendirme
 12. Kaynaklar
 
+Her önemli bulguyu mümkün olduğunda ilgili URL ile ilişkilendir.
+Kaynak yoksa bunu açıkça belirt. Raporu {LANGUAGES[dil]} dilinde yaz.
+
 Kayıtlı proje verisi:
 {json.dumps(proje_verisi, ensure_ascii=False, indent=2)}
 
@@ -224,7 +393,7 @@ Web arama sonuçları:
 """
 
     try:
-        yanit = requests.post(
+        response = requests.post(
             API_URL,
             headers={
                 "Authorization": f"Bearer {API_KEY}",
@@ -240,9 +409,9 @@ Web arama sonuçları:
             },
             timeout=(10, 150),
         )
-        yanit.raise_for_status()
-        sonuc = yanit.json()
-        metin = sonuc["choices"][0]["message"].get("content")
+        response.raise_for_status()
+        data = response.json()
+        text = data["choices"][0]["message"].get("content")
 
     except requests.Timeout as hata:
         logger.exception("Fortytwo API zaman aşımı.")
@@ -251,14 +420,14 @@ Web arama sonuçları:
         ) from hata
 
     except requests.HTTPError as hata:
-        durum = (
+        status = (
             hata.response.status_code
             if hata.response is not None
             else "bilinmiyor"
         )
-        logger.exception("Fortytwo API HTTP hatası: %s", durum)
+        logger.exception("Fortytwo API HTTP hatası: %s", status)
         raise RuntimeError(
-            f"Fortytwo API HTTP {durum} hatası verdi."
+            f"Fortytwo API HTTP {status} hatası verdi."
         ) from hata
 
     except requests.RequestException as hata:
@@ -273,29 +442,25 @@ Web arama sonuçları:
             "Fortytwo API beklenmeyen yanıt döndürdü."
         ) from hata
 
-    if not isinstance(metin, str) or not metin.strip():
+    if not isinstance(text, str) or not text.strip():
         raise RuntimeError("Model boş yanıt döndürdü.")
 
-    return metin.strip()
+    return text.strip()
 
 
 if __name__ == "__main__":
-    proje = input("Analiz etmek istediğin proje: ").strip()
+    project = input("Analiz etmek istediğin proje: ").strip()
 
-    if proje:
+    if project:
         try:
-            # Bu bölüm web aramasını tek başına test eder.
-            # Fortytwo API'sini çağırmaz ve kredi harcamaz.
-            kaynaklar = webde_ara(proje)
-            print(f"\nBulunan kaynak sayısı: {len(kaynaklar)}")
+            # Yalnızca ücretsiz arama çalışır; Fortytwo çağrılmaz.
+            sources = webde_ara(project)
+            print(f"\nBulunan ilgili kaynak sayısı: {len(sources)}")
 
-            for kaynak in kaynaklar:
-                print(f"\n{kaynak['baslik']}")
-                print(kaynak["url"])
-                print(kaynak["aciklama"])
+            for source in sources:
+                print(f"\n{source['baslik']}")
+                print(source["url"])
+                print(source["aciklama"])
 
         except Exception as hata:
             print(f"\nArama başarısız: {hata}")
-
-
-    
