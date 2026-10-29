@@ -119,3 +119,7 @@ def kayitli_proje_getir(proje_adi):
         return {}
     except (OSError, json.JSONDecodeError):
         return {}
+                return value
+        return {}
+    except (OSError, json.JSONDecodeError):
+        return {}
