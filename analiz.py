@@ -102,14 +102,18 @@ def _safe_public_url(url):
 
 
 def _search_queries(project):
-    """Her proje için genel amaçlı farklı araştırma sorguları üretir."""
+    """Projeyi farklı başlıklardan araştırır; sonuç bulunmayan alanlar raporda eksik olarak belirtilir."""
     return [
         f'"{project}" official website',
-        f'"{project}" documentation technical architecture',
-        f'"{project}" GitHub source code',
-        f'"{project}" products development roadmap',
-        f'"{project}" team partners announcements',
-        f'"{project}" tokenomics token official',
+        f'"{project}" official documentation technical architecture',
+        f'"{project}" GitHub source code repositories',
+        f'"{project}" product launch mainnet testnet roadmap release',
+        f'"{project}" team founders investors funding partners',
+        f'"{project}" tokenomics token supply vesting unlock official',
+        f'"{project}" token exchange listing market data official',
+        f'"{project}" security audit incident bug bounty',
+        f'"{project}" governance community ecosystem integrations',
+        f'"{project}" latest news announcement 2026',
     ]
 
 
@@ -611,19 +615,31 @@ Kurallar:
 - Yatırım tavsiyesi verme.
 - Raporun tamamını {LANGUAGES[dil]} dilinde yaz.
 
-Bölümler:
-1. Yönetici özeti
-2. Amaç ve hedef kullanıcılar
-3. Teknoloji ve mimari
-4. Ürünler ve geliştirme durumu
-5. Açık kaynak ve açıklık değerlendirmesi
-6. Token ekonomisi veya uygulanabilirliği
-7. Ekip, ekosistem ve ortaklıklar
-8. Güncel gelişmeler
-9. Güçlü yönler
-10. Riskler ve doğrulanamayan bilgiler
-11. Genel değerlendirme
-12. Kaynaklar
+Rapor eksiksiz bir KONTROL LİSTESİ izlemelidir. Her başlık için kanıt varsa bulguyu ve doğrudan URL'yi yaz; kanıt yoksa "Doğrulanamadı / kaynak bulunamadı" de. Bir alanın bulunmaması, o özelliğin kesinlikle olmadığı anlamına gelmez. İlgisiz veriyi doldurmak için tahmin üretme.
+
+Zorunlu bölümler:
+1. Yönetici özeti ve araştırma kapsamı (tarih, kaç kaynak incelendi, veri sınırlamaları)
+2. Proje kimliği, resmî web sitesi ve doğrulanmış resmî bağlantılar
+3. Amaç, hedef kullanıcılar ve çözdüğü sorun
+4. Teknoloji, mimari, ağ/altyapı ve entegrasyonlar
+5. Ürünler, kullanım örnekleri, demo ve ürünün mevcut durumu
+6. Geliştirme etkinliği: depo eşleşmesi, lisans, son commit/sürüm ve bilinen sınırlamalar
+7. Yol haritası, kilometre taşları ve gerçekleştiği doğrulanabilen teslimatlar
+8. Açık kaynak durumu, lisans, şeffaflık ve yeniden üretilebilirlik
+9. Ekip, kurucular, danışmanlar ve doğrulanabilir geçmiş (kanıt yoksa belirt)
+10. Fonlama, yatırımcılar ve hibeler (yalnızca kaynaklıysa)
+11. Token durumu: token var mı, ağ/kontrat, sembol, arz, dolaşım, dağılım, vesting/unlock, kullanım alanı; bulunmayan her alt alanı ayrı belirt
+12. Borsa listelenmeleri ve piyasa verisi: tarih damgası ve kaynak; teyit yoksa listeleme iddiası kurma
+13. Ekosistem, ortaklıklar, entegrasyonlar ve yönetişim; duyuru ile doğrulanmış entegrasyonu ayır
+14. Güvenlik: denetimler, denetleyen kuruluş, kapsam/tarih, bug bounty ve bilinen olaylar; kaynak yoksa "denetim yok" diye kesin hüküm verme
+15. Son gelişmeler: tarihli olaylar ve güncellik sınırı
+16. Güçlü yönler ve bunları destekleyen kanıtlar
+17. Riskler, çelişkili iddialar ve doğrulanamayan bilgiler
+18. Kapsam tablosu: her ana kategori için "Doğrulandı / Kısmen doğrulandı / Bulunamadı / Çelişkili" durumu
+19. Genel değerlendirme: yatırım tavsiyesi olmadan, kanıtın gücü ve sınırlamaları
+20. Kaynakça: kaynak başlığı, URL ve hangi iddiayı desteklediği
+
+Kaynak sayısı tek başına kanıt kalitesi değildir. Resmî kaynakları önceliklendir; üçüncü taraf iddialarını resmî bilgi gibi sunma. Güncel fiyatlar veya borsa durumları gibi değişken bilgilerde kaynak tarihi yoksa güncel olduğunu iddia etme.
 
 Kayıtlı proje verisi:
 {json.dumps(proje_verisi, ensure_ascii=False, indent=2)}
@@ -642,7 +658,7 @@ Araştırma kaynakları:
             json={
                 "model": MODEL,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 3000,
+                "max_tokens": 4500,
                 "temperature": 0.2,
             },
             timeout=(10, 150),
