@@ -59,31 +59,31 @@ HTML = r"""
     <style>
         :root {
             color-scheme: dark;
-            --bg: #0b1020;
-            --surface: #11182b;
-            --surface-2: #172039;
-            --surface-3: #1d2945;
+            --bg: #08131d;
+            --surface: #0f202c;
+            --surface-2: #142b39;
+            --surface-3: #1b3948;
             --text: #edf1ff;
             --muted: #a0abc5;
-            --border: #293552;
-            --accent: #9385ff;
-            --accent-2: #65b8ff;
+            --border: #254252;
+            --accent: #39d6c4;
+            --accent-2: #65aaff;
             --button-text: #0b1020;
-            --input-bg: #0d1426;
+            --input-bg: #0b1a25;
             --shadow: 0 18px 50px rgba(0, 0, 0, .18);
         }
 
         html[data-theme="light"] {
             color-scheme: light;
-            --bg: #f4f6fb;
+            --bg: #f3f7f8;
             --surface: #ffffff;
-            --surface-2: #f0f2fa;
-            --surface-3: #e6e9f5;
+            --surface-2: #eaf2f4;
+            --surface-3: #dcebed;
             --text: #182039;
             --muted: #626d86;
-            --border: #dce1ee;
-            --accent: #6654dc;
-            --accent-2: #267acb;
+            --border: #d4e2e5;
+            --accent: #087f8c;
+            --accent-2: #245fbd;
             --button-text: #ffffff;
             --input-bg: #ffffff;
             --shadow: 0 15px 40px rgba(29, 42, 75, .07);
@@ -323,6 +323,30 @@ HTML = r"""
             color: var(--muted);
             font-size: 16px;
         }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin: 0 0 28px;
+        }
+        .feature-card {
+            padding: 19px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: linear-gradient(145deg, var(--surface), var(--surface-2));
+        }
+        .feature-icon {
+            display: grid; place-items: center; width: 38px; height: 38px;
+            margin-bottom: 12px; border-radius: 12px;
+            background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+            color: var(--accent); font-size: 18px; font-weight: 800;
+        }
+        .feature-card h3 { margin: 0 0 6px; font-size: 14px; }
+        .feature-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+        .hero { padding: 10px 0 4px; }
+        .hero h1 { max-width: 800px; margin-left: auto; margin-right: auto; }
+        .hero p { max-width: 650px; }
 
         .panel {
             background: var(--surface);
@@ -612,7 +636,7 @@ HTML = r"""
             main { padding-top: 38px; }
             .hero p { font-size: 14px; }
             .panel { padding: 18px; border-radius: 17px; }
-            .form-grid, .sources { grid-template-columns: 1fr; }
+            .form-grid, .sources, .feature-grid { grid-template-columns: 1fr; }
             .github-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .form-grid { gap: 14px; }
             .submit-button { margin-top: 16px; }
@@ -646,7 +670,7 @@ HTML = r"""
             <div class="brand-icon" aria-hidden="true">P</div>
             <div>
                 <div class="brand-name">Prey Open AGI</div>
-                <div class="brand-subtitle">Open Research Intelligence</div>
+                <div class="brand-subtitle" id="brandSubtitle">Open Research Intelligence</div>
             </div>
         </div>
 
@@ -664,7 +688,7 @@ HTML = r"""
                     <span id="currentLanguageLabel">{{ languages.get(dil, "Türkçe") }}</span>
                     <span aria-hidden="true">⌄</span>
                 </button>
-                <div class="language-dropdown" id="languageDropdown" role="group" aria-label="Rapor dili" hidden>
+                <div class="language-dropdown" id="languageDropdown" role="group" aria-label="Site ve rapor dili" hidden>
                     {% for code, name in languages.items() %}
                     <button
                         type="button"
@@ -699,30 +723,31 @@ HTML = r"""
     <section class="hero">
         <div class="eyebrow">
             <span class="status-dot"></span>
-            Open-source AI research
+            <span id="heroEyebrow">OPEN-SOURCE AI RESEARCH</span>
         </div>
-        <h1>Explore the <span class="gradient-text">Open Intelligence</span></h1>
-        <p>
-            Projeleri araştır, teknik kaynakları keşfet ve yapay zekâ
-            destekli analiz raporlarını tek bir yerde oluştur.
-        </p>
+        <h1 id="heroTitle">Explore the <span class="gradient-text">Open Intelligence</span></h1>
+        <p id="heroDescription">Open AGI projelerini; teknik kaynaklar, gerçek geliştirme sinyalleri ve kaynak gösteren AI analiziyle tek yerde araştır.</p>
+    </section>
+
+    <section class="feature-grid" aria-label="Platform özellikleri">
+        <article class="feature-card"><div class="feature-icon" aria-hidden="true">⌕</div><h3 id="featureResearchTitle">Canlı kaynak araştırması</h3><p id="featureResearchText">Resmî siteler, dokümantasyon, duyurular ve kaynak bağlantıları tek raporda.</p></article>
+        <article class="feature-card"><div class="feature-icon" aria-hidden="true">↗</div><h3 id="featureGithubTitle">GitHub geliştirme sinyalleri</h3><p id="featureGithubText">Stars, forks, son commitler ve sürüm bilgileriyle açık geliştirme etkinliğini incele.</p></article>
+        <article class="feature-card"><div class="feature-icon" aria-hidden="true">◎</div><h3 id="featureEvidenceTitle">Kanıta dayalı analiz</h3><p id="featureEvidenceText">Teknik yapı, ürün ilerlemesi, token ekonomisi ve riskleri kaynaklarla birlikte değerlendir.</p></article>
     </section>
 
     <section class="panel" aria-labelledby="searchTitle">
         <h2 class="panel-heading" id="searchTitle">Proje araştırması</h2>
-        <p class="panel-description">
-            Projenin adını gir ve araştırma raporunu oluştur.
-        </p>
+        <p class="panel-description" id="searchDescription">Proje adını gir; web kaynaklarını, GitHub geliştirme verilerini ve AI analizini bir arada incele.</p>
 
         <form method="POST" action="/" id="researchForm">
             <div class="form-grid">
                 <div>
-                    <label for="proje_adi">Proje adı veya araştırma konusu</label>
+                    <label for="proje_adi" id="projectLabel">Proje adı veya araştırma konusu</label>
                     <input
                         type="text"
                         id="proje_adi"
                         name="proje_adi"
-                        placeholder="Örn. Sentient Foundation"
+                        placeholder="Örn. Sentient Foundation" id="projectInput"
                         value="{{ proje_adi }}"
                         required
                         maxlength="200"
@@ -737,10 +762,7 @@ HTML = r"""
                 <span aria-hidden="true">⌕</span>
                 <span id="submitLabel">Araştırmayı başlat</span>
             </button>
-            <p class="hint">
-                Analiz, erişilebilen kaynaklara dayanır. Doğrulanamayan
-                bilgiler raporda ayrıca belirtilmelidir.
-            </p>
+            <p class="hint" id="researchHint">Analiz erişilebilen kaynaklara dayanır. Proje adıyla eşleşmeyen GitHub depoları olası eşleşme olarak işaretlenir.</p>
         </form>
     </section>
 
@@ -769,19 +791,19 @@ HTML = r"""
 
             <div class="github-metrics">
                 <div class="github-metric">
-                    <div class="github-metric-label">Stars</div>
+                    <div class="github-metric-label" id="githubStarsLabel">Stars</div>
                     <div class="github-metric-value">{{ "{:,}".format(github_veri.stars).replace(",", " ") }}</div>
                 </div>
                 <div class="github-metric">
-                    <div class="github-metric-label">Forks</div>
+                    <div class="github-metric-label" id="githubForksLabel">Forks</div>
                     <div class="github-metric-value">{{ "{:,}".format(github_veri.forks).replace(",", " ") }}</div>
                 </div>
                 <div class="github-metric">
-                    <div class="github-metric-label">Açık issue / PR sayacı*</div>
+                    <div class="github-metric-label" id="githubIssuesLabel">Açık issue / PR sayacı*</div>
                     <div class="github-metric-value">{{ "{:,}".format(github_veri.open_issues).replace(",", " ") }}</div>
                 </div>
                 <div class="github-metric">
-                    <div class="github-metric-label">Ana dil</div>
+                    <div class="github-metric-label" id="githubLanguageLabel">Ana dil</div>
                     <div class="github-metric-value" style="font-size:16px">{{ github_veri.language }}</div>
                 </div>
             </div>
@@ -802,7 +824,7 @@ HTML = r"""
             </div>
 
             {% if github_veri.commits %}
-                <h3 class="panel-heading" style="margin-top:24px">Son commitler</h3>
+                <h3 class="panel-heading" id="commitsTitle" style="margin-top:24px">Son commitler</h3>
                 <div class="commit-list">
                     {% for commit in github_veri.commits %}
                         <div class="commit-item">
@@ -865,7 +887,7 @@ HTML = r"""
 
 <footer>
     <div class="container">
-        Prey Open AGI · Open-source research intelligence
+        Prey Open AGI · <span id="footerText">Open-source research intelligence</span>
     </div>
 </footer>
 
@@ -885,6 +907,37 @@ HTML = r"""
             document.querySelectorAll(".language-option")
         );
 
+        const UI_TEXT = {
+            tr: { stars:"Stars", forks:"Forks", issues:"Açık issue / PR sayacı*", mainLanguage:"Ana dil", commits:"Son commitler", brandSubtitle:"Açık Araştırma Zekâsı", eyebrow:"AÇIK KAYNAKLI AI ARAŞTIRMASI", heroTitle:"Açık Zekâyı Keşfet", heroDescription:"Open AGI projelerini; teknik kaynaklar, gerçek geliştirme sinyalleri ve kaynak gösteren AI analiziyle tek yerde araştır.", featureResearchTitle:"Canlı kaynak araştırması", featureResearchText:"Resmî siteler, dokümantasyon, duyurular ve kaynak bağlantıları tek raporda.", featureGithubTitle:"GitHub geliştirme sinyalleri", featureGithubText:"Stars, forks, son commitler ve sürüm bilgileriyle açık geliştirme etkinliğini incele.", featureEvidenceTitle:"Kanıta dayalı analiz", featureEvidenceText:"Teknik yapı, ürün ilerlemesi, token ekonomisi ve riskleri kaynaklarla birlikte değerlendir.", searchTitle:"Proje araştırması", searchDescription:"Proje adını gir; web kaynaklarını, GitHub geliştirme verilerini ve AI analizini bir arada incele.", projectLabel:"Proje adı veya araştırma konusu", placeholder:"Örn. Sentient Foundation", submit:"Araştırmayı başlat", loading:"Araştırılıyor...", hint:"Analiz erişilebilen kaynaklara dayanır. Proje adıyla eşleşmeyen GitHub depoları olası eşleşme olarak işaretlenir.", reportTitle:"Araştırma raporu", sourcesTitle:"Araştırma kaynakları", githubTitle:"GitHub gelişim özeti", themeDark:"Gündüz", themeLight:"Gece", themeDarkAria:"Gündüz moduna geç", themeLightAria:"Gece moduna geç", errorEmpty:"Lütfen bir proje adı veya araştırma konusu gir.", footer:"Açık kaynak araştırma zekâsı" },
+            en: { stars:"Stars", forks:"Forks", issues:"Open issues / PRs*", mainLanguage:"Primary language", commits:"Recent commits", brandSubtitle:"Open Research Intelligence", eyebrow:"OPEN-SOURCE AI RESEARCH", heroTitle:"Explore Open Intelligence", heroDescription:"Research Open AGI projects in one place with technical sources, real development signals, and cited AI analysis.", featureResearchTitle:"Live source research", featureResearchText:"Official websites, documentation, announcements, and source links in one report.", featureGithubTitle:"GitHub development signals", featureGithubText:"Review public development activity through stars, forks, recent commits, and releases.", featureEvidenceTitle:"Evidence-based analysis", featureEvidenceText:"Assess technical design, product progress, token economics, and risks with sources.", searchTitle:"Project research", searchDescription:"Enter a project name to review web sources, GitHub development data, and AI analysis together.", projectLabel:"Project name or research topic", placeholder:"e.g. Sentient Foundation", submit:"Start research", loading:"Researching...", hint:"Analysis is based on accessible sources. GitHub repositories that may not match the project are marked as possible matches.", reportTitle:"Research report", sourcesTitle:"Research sources", githubTitle:"GitHub development overview", themeDark:"Light mode", themeLight:"Dark mode", themeDarkAria:"Switch to light mode", themeLightAria:"Switch to dark mode", errorEmpty:"Enter a project name or research topic.", footer:"Open-source research intelligence" },
+            es: { stars:"Stars", forks:"Forks", issues:"Issues / PR abiertos*", mainLanguage:"Lenguaje principal", commits:"Commits recientes", brandSubtitle:"Inteligencia de investigación abierta", eyebrow:"INVESTIGACIÓN DE IA DE CÓDIGO ABIERTO", heroTitle:"Explora la inteligencia abierta", heroDescription:"Investiga proyectos Open AGI en un solo lugar con fuentes técnicas, señales reales de desarrollo y análisis de IA con referencias.", featureResearchTitle:"Investigación de fuentes", featureResearchText:"Sitios oficiales, documentación, anuncios y enlaces en un solo informe.", featureGithubTitle:"Señales de desarrollo en GitHub", featureGithubText:"Consulta estrellas, forks, commits recientes y versiones publicadas.", featureEvidenceTitle:"Análisis basado en pruebas", featureEvidenceText:"Evalúa tecnología, progreso del producto, economía del token y riesgos con fuentes.", searchTitle:"Investigación del proyecto", searchDescription:"Introduce un proyecto para consultar fuentes web, datos de GitHub y análisis de IA.", projectLabel:"Nombre del proyecto o tema", placeholder:"p. ej., Sentient Foundation", submit:"Iniciar investigación", loading:"Investigando...", hint:"El análisis utiliza fuentes accesibles. Los repositorios que podrían no coincidir se marcan como posibles coincidencias.", reportTitle:"Informe de investigación", sourcesTitle:"Fuentes de investigación", githubTitle:"Resumen de desarrollo de GitHub", themeDark:"Modo claro", themeLight:"Modo oscuro", themeDarkAria:"Cambiar a modo claro", themeLightAria:"Cambiar a modo oscuro", errorEmpty:"Introduce un nombre de proyecto o tema.", footer:"Inteligencia de investigación de código abierto" },
+            pt: { stars:"Stars", forks:"Forks", issues:"Issues / PR abertos*", mainLanguage:"Linguagem principal", commits:"Commits recentes", brandSubtitle:"Inteligência de pesquisa aberta", eyebrow:"PESQUISA DE IA DE CÓDIGO ABERTO", heroTitle:"Explore a inteligência aberta", heroDescription:"Pesquise projetos Open AGI em um só lugar com fontes técnicas, sinais reais de desenvolvimento e análise de IA citada.", featureResearchTitle:"Pesquisa de fontes", featureResearchText:"Sites oficiais, documentação, anúncios e links em um único relatório.", featureGithubTitle:"Sinais de desenvolvimento no GitHub", featureGithubText:"Veja stars, forks, commits recentes e versões publicadas.", featureEvidenceTitle:"Análise baseada em evidências", featureEvidenceText:"Avalie tecnologia, progresso do produto, economia do token e riscos com fontes.", searchTitle:"Pesquisa de projeto", searchDescription:"Digite um projeto para consultar fontes da web, dados do GitHub e análise de IA.", projectLabel:"Nome do projeto ou tema", placeholder:"ex.: Sentient Foundation", submit:"Iniciar pesquisa", loading:"Pesquisando...", hint:"A análise usa fontes acessíveis. Repositórios que talvez não correspondam são marcados como possíveis correspondências.", reportTitle:"Relatório de pesquisa", sourcesTitle:"Fontes da pesquisa", githubTitle:"Resumo de desenvolvimento do GitHub", themeDark:"Modo claro", themeLight:"Modo escuro", themeDarkAria:"Mudar para modo claro", themeLightAria:"Mudar para modo escuro", errorEmpty:"Digite um nome de projeto ou tema.", footer:"Inteligência de pesquisa de código aberto" },
+            zh: { stars:"Stars", forks:"Forks", issues:"未关闭的 issue / PR*", mainLanguage:"主要语言", commits:"最近提交", brandSubtitle:"开放研究智能", eyebrow:"开源人工智能研究", heroTitle:"探索开放智能", heroDescription:"在一个平台研究 Open AGI 项目，查看技术来源、真实开发信号和带引用的 AI 分析。", featureResearchTitle:"实时来源研究", featureResearchText:"在一份报告中查看官方网站、文档、公告和来源链接。", featureGithubTitle:"GitHub 开发信号", featureGithubText:"通过 stars、forks、近期提交和版本信息了解公开开发活动。", featureEvidenceTitle:"基于证据的分析", featureEvidenceText:"结合来源评估技术架构、产品进展、代币经济和风险。", searchTitle:"项目研究", searchDescription:"输入项目名称，同时查看网络来源、GitHub 开发数据和 AI 分析。", projectLabel:"项目名称或研究主题", placeholder:"例如：Sentient Foundation", submit:"开始研究", loading:"研究中…", hint:"分析基于可访问的来源。可能不匹配的 GitHub 仓库会标记为候选匹配。", reportTitle:"研究报告", sourcesTitle:"研究来源", githubTitle:"GitHub 开发概览", themeDark:"浅色模式", themeLight:"深色模式", themeDarkAria:"切换到浅色模式", themeLightAria:"切换到深色模式", errorEmpty:"请输入项目名称或研究主题。", footer:"开源研究智能" },
+            ru: { stars:"Stars", forks:"Forks", issues:"Открытые issues / PR*", mainLanguage:"Основной язык", commits:"Последние коммиты", brandSubtitle:"Интеллект открытых исследований", eyebrow:"ИССЛЕДОВАНИЯ ОТКРЫТОГО ИИ", heroTitle:"Исследуйте открытый интеллект", heroDescription:"Изучайте проекты Open AGI в одном месте: технические источники, реальные сигналы разработки и анализ ИИ со ссылками.", featureResearchTitle:"Поиск по источникам", featureResearchText:"Официальные сайты, документация, объявления и ссылки в одном отчёте.", featureGithubTitle:"Сигналы разработки GitHub", featureGithubText:"Изучайте открытую активность по звёздам, форкам, коммитам и релизам.", featureEvidenceTitle:"Анализ на основе фактов", featureEvidenceText:"Оценивайте технологии, прогресс продукта, токеномику и риски со ссылками.", searchTitle:"Исследование проекта", searchDescription:"Введите название проекта, чтобы вместе изучить веб-источники, данные GitHub и анализ ИИ.", projectLabel:"Название проекта или тема", placeholder:"например, Sentient Foundation", submit:"Начать исследование", loading:"Идёт исследование…", hint:"Анализ основан на доступных источниках. Возможные несовпадения репозитория GitHub отмечаются отдельно.", reportTitle:"Отчёт исследования", sourcesTitle:"Источники исследования", githubTitle:"Обзор разработки GitHub", themeDark:"Светлая тема", themeLight:"Тёмная тема", themeDarkAria:"Переключить на светлую тему", themeLightAria:"Переключить на тёмную тему", errorEmpty:"Введите название проекта или тему исследования.", footer:"Интеллект открытых исследований" }
+        };
+
+        function applyLanguage(code) {
+            const t = UI_TEXT[code] || UI_TEXT.en;
+            const set = (id, value) => { const el = document.getElementById(id); if (el && value) el.textContent = value; };
+            set("brandSubtitle", t.brandSubtitle); set("heroEyebrow", t.eyebrow);
+            const heroTitle = document.getElementById("heroTitle");
+            if (heroTitle) heroTitle.innerHTML = code === "tr" ? 'Açık Zekâyı <span class="gradient-text">Keşfet</span>' : code === "en" ? 'Explore <span class="gradient-text">Open Intelligence</span>' : t.heroTitle;
+            set("heroDescription", t.heroDescription); set("featureResearchTitle", t.featureResearchTitle); set("featureResearchText", t.featureResearchText);
+            set("featureGithubTitle", t.featureGithubTitle); set("featureGithubText", t.featureGithubText); set("featureEvidenceTitle", t.featureEvidenceTitle); set("featureEvidenceText", t.featureEvidenceText);
+            set("searchTitle", t.searchTitle); set("searchDescription", t.searchDescription); set("projectLabel", t.projectLabel); set("submitLabel", t.submit); set("researchHint", t.hint);
+            set("githubTitle", t.githubTitle);
+            const setHeadingText = (id, value) => { const el = document.getElementById(id); if (el && el.firstChild) el.firstChild.textContent = value + " "; };
+            setHeadingText("reportTitle", t.reportTitle); setHeadingText("sourcesTitle", t.sourcesTitle);
+            set("githubStarsLabel", t.stars); set("githubForksLabel", t.forks); set("githubIssuesLabel", t.issues); set("githubLanguageLabel", t.mainLanguage); set("commitsTitle", t.commits);
+            set("footerText", t.footer);
+            const input = document.getElementById("projectInput"); if (input) input.placeholder = t.placeholder;
+            const isDark = root.dataset.theme !== "light";
+            label.textContent = isDark ? t.themeDark : t.themeLight;
+            button.setAttribute("aria-label", isDark ? t.themeDarkAria : t.themeLightAria);
+            document.documentElement.lang = code;
+            try { localStorage.setItem("prey-language", code); } catch (e) {}
+        }
+
         function closeLanguageMenu() {
             languageDropdown.hidden = true;
             languageToggle.setAttribute("aria-expanded", "false");
@@ -901,6 +954,7 @@ HTML = r"""
                 const selectedCode = option.dataset.language;
                 languageInput.value = selectedCode;
                 currentLanguageLabel.textContent = option.dataset.languageName;
+                applyLanguage(selectedCode);
 
                 languageOptions.forEach(function (item) {
                     const selected = item === option;
@@ -929,11 +983,10 @@ HTML = r"""
         function updateThemeButton(theme) {
             const isDark = theme === "dark";
             icon.textContent = isDark ? "☀" : "☾";
-            label.textContent = isDark ? "Gündüz" : "Gece";
-            button.setAttribute(
-                "aria-label",
-                isDark ? "Gündüz moduna geç" : "Gece moduna geç"
-            );
+            const code = (document.getElementById("dil") || {}).value || "tr";
+            const t = UI_TEXT[code] || UI_TEXT.en;
+            label.textContent = isDark ? t.themeDark : t.themeLight;
+            button.setAttribute("aria-label", isDark ? t.themeDarkAria : t.themeLightAria);
             button.setAttribute("aria-pressed", String(!isDark));
 
             if (metaTheme) {
@@ -956,6 +1009,18 @@ HTML = r"""
         }
 
         updateThemeButton(root.dataset.theme || "dark");
+        let initialLanguage = (languageInput && languageInput.value) || "tr";
+        try {
+            const savedLanguage = localStorage.getItem("prey-language");
+            if (savedLanguage && UI_TEXT[savedLanguage] && !document.querySelector("#reportTitle")) initialLanguage = savedLanguage;
+        } catch (e) {}
+        if (languageInput) languageInput.value = initialLanguage;
+        const initialOption = languageOptions.find(item => item.dataset.language === initialLanguage);
+        if (initialOption) {
+            currentLanguageLabel.textContent = initialOption.dataset.languageName;
+            languageOptions.forEach(item => { const selected = item === initialOption; item.setAttribute("aria-checked", String(selected)); item.querySelector(".language-check").textContent = selected ? "✓" : ""; });
+        }
+        applyLanguage(initialLanguage);
 
         button.addEventListener("click", function () {
             const current = root.dataset.theme || "dark";
@@ -969,7 +1034,7 @@ HTML = r"""
         form.addEventListener("submit", function () {
             submitButton.disabled = true;
             submitButton.style.opacity = ".75";
-            submitLabel.textContent = "Araştırılıyor...";
+            submitLabel.textContent = (UI_TEXT[(document.getElementById("dil") || {}).value || "tr"] || UI_TEXT.en).loading;
         });
     })();
 </script>
