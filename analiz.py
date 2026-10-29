@@ -1,10 +1,10 @@
-
 import json
 import os
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
+from ddgs import DDGS
 
 KLASOR = Path(__file__).parent
 PROJE_DOSYASI = KLASOR / "projeler.json"
@@ -15,27 +15,71 @@ API_URL = "https://api.fortytwo.network/v1/chat/completions"
 MODEL = "qwen/qwen3.8-27b"
 
 
-def ai_analizi(proje_verisi):
+def webde_ara(proje_adi, max_sonuc=6):
+    """DuckDuckGo üzerinden genel web sonuçlarını toplar."""
+    sorgu = f'"{proje_adi}" official website documentation GitHub'
+    try:
+        with DDGS() as ddgs:
+            sonuclar = list(ddgs.text(sorgu, max_results=max_sonuc))
+        temiz = []
+        for s in sonuclar:
+            baslik = s.get("title", "")
+            url = s.get("href", "")
+            aciklama = s.get("body", "")
+            if url and (baslik or aciklama):
+                temiz.append({
+                    "baslik": baslik,
+                    "url": url,
+                    "aciklama": aciklama
+                })
+        return temiz
+    except Exception:
+        return []
+
+
+def ai_analizi(proje_adi, proje_verisi=None, arama_sonuclari=None):
     if not API_KEY:
-        raise RuntimeError(".env dosyasinda API anahtari bulunamadi.")
+        raise RuntimeError(
+            "FORTYTWO_API_KEY bulunamadi. Render Environment ayarlarini kontrol et."
+        )
+
+    proje_verisi = proje_verisi or {}
+    arama_sonuclari = arama_sonuclari or []
+
+    kaynak_metni = "\n".join(
+        f"- Başlık: {s['baslik']}\n  URL: {s['url']}\n  Açıklama: {s['aciklama']}"
+        for s in arama_sonuclari
+    ) or "Web aramasından sonuç alınamadı."
 
     prompt = f"""
-Sen dikkatli bir Web3 proje analistisin.
-Yalnizca asagidaki JSON verisini kullan.
-Eksik bilgileri kendin uydurma; "Veri eksik" diye belirt.
-Guncel internet verisine sahip oldugunu iddia etme.
-Turkce, acik ve tarafsiz yaz.
-Su basliklari kullan:
-1. Projenin amaci
-2. Teknoloji ve urun
-3. Token ekonomisi
-4. Guclu yonler
-5. Riskler
-6. Eksik ve dogrulanmasi gereken bilgiler
+Sen Prey Open AGI için dikkatli ve tarafsız bir açık AGI proje analistisin.
+Kullanıcının aradığı proje: {proje_adi}
 
-Her baslik altinda en fazla 3 kisa madde yaz.
-Veri:
-{json.dumps(proje_verisi, ensure_ascii=False)}
+Kurallar:
+- Türkçe yaz.
+- Yalnızca aşağıdaki kayıtlı veri ve arama sonuçlarını dayanak olarak kullan.
+- Arama sonuçlarındaki iddiaları doğrulanmış gerçek gibi sunma; kaynakların ne söylediğini ayırt et.
+- Kaynakların desteklemediği bilgileri uydurma; "Doğrulanamadı" veya "Veri eksik" de.
+- Projenin gerçekten açık kaynak / açık AGI olup olmadığını incele; yeterli kanıt yoksa bunu açıkça belirt.
+- Token bilgisi yoksa tokenı varmış gibi varsayma.
+- En sonda "Kaynaklar" başlığıyla kullanılan URL'leri listele.
+- Yatırım tavsiyesi verme.
+
+Şu başlıkları kullan:
+1. Projenin amacı
+2. Açıklık ve açık kaynak durumu
+3. Teknoloji ve ürün
+4. Token ekonomisi (token yoksa "Uygulanamaz veya doğrulanamadı")
+5. Güçlü yönler
+6. Riskler ve eksikler
+7. Genel değerlendirme
+8. Kaynaklar
+
+Kayıtlı proje verisi:
+{json.dumps(proje_verisi, ensure_ascii=False, indent=2)}
+
+Web arama sonuçları:
+{kaynak_metni}
 """
 
     yanit = requests.post(
@@ -46,92 +90,32 @@ Veri:
         },
         json={
             "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "max_tokens": 1200,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1800,
             "temperature": 0.2
         },
-        timeout=90
+        timeout=120
     )
-
     yanit.raise_for_status()
     sonuc = yanit.json()
-    mesaj = sonuc["choices"][0]["message"]
-    metin = mesaj.get("content")
-
+    metin = sonuc["choices"][0]["message"].get("content")
     if not metin:
-        raise RuntimeError(
-            "Model bos metin dondurdu. Bitis nedeni: "
-            + str(sonuc["choices"][0].get("finish_reason"))
-        )
-
+        raise RuntimeError("Model boş yanıt döndürdü.")
     return metin.strip()
 
 
-def rapor_olustur(proje):
-    with open(PROJE_DOSYASI, "r", encoding="utf-8") as dosya:
-        projeler = json.load(dosya)
-
-    anahtar = proje.strip().lower()
-
-    if anahtar not in projeler:
-        print(f"\n'{proje}' kayitli projeler arasinda bulunamadi.")
-        print("Mevcut projeler:", ", ".join(projeler.keys()))
-        return
-
-    veri = projeler[anahtar]
-
-    print("\nFortytwo AI analiz yapiyor...")
+def kayitli_proje_getir(proje_adi):
+    if not PROJE_DOSYASI.exists():
+        return {}
     try:
-        rapor = ai_analizi(veri)
-        durum = "Fortytwo AI tarafindan olusturuldu."
-    except Exception as hata:
-        print(f"\nAI analizi basarisiz: {hata}")
-        print("Kayitli verilerden standart rapor olusturuluyor.")
-
-        bolumler = [
-            ("Projenin amaci", veri.get("amac", "Veri eksik")),
-            ("Teknoloji ve urun", veri.get("teknoloji", "Veri eksik")),
-            ("Urun durumu", veri.get("urun_durumu", "Veri eksik")),
-            ("Token ekonomisi", json.dumps(
-                veri.get("token", {}), ensure_ascii=False, indent=2
-            )),
-            ("Guclu yonler", "\n".join(
-                "- " + x for x in veri.get("guclu_yonler", [])
-            )),
-            ("Riskler", "\n".join(
-                "- " + x for x in veri.get("riskler", [])
-            )),
-            ("Eksik bilgiler", "\n".join(
-                "- " + x for x in veri.get("bilinmeyenler", [])
-            ))
-        ]
-        rapor = "\n\n".join(
-            baslik + "\n" + icerik for baslik, icerik in bolumler
-        )
-        durum = "Standart rapor; AI kullanilamadi."
-
-    tam_rapor = (
-        f"WEB3 PROJE ANALIZI: {veri.get('ad', proje)}\n"
-        f"Durum: {durum}\n"
-        "Not: Analiz yalnizca kayitli veriye dayanir; "
-        "guncel bilgiler ayrica dogrulanmalidir.\n\n"
-        + rapor
-    )
-
-    print("\n" + "=" * 50)
-    print(tam_rapor)
-    print("=" * 50)
-
-    cikti = KLASOR / f"{anahtar}_raporu.txt"
-    cikti.write_text(tam_rapor, encoding="utf-8")
-    print(f"\nRapor kaydedildi: {cikti.name}")
-
-
-if __name__ == "__main__":
-    proje = input("Analiz etmek istedigin proje adini yaz: ")
-    rapor_olustur(proje)
+        with open(PROJE_DOSYASI, "r", encoding="utf-8") as dosya:
+            projeler = json.load(dosya)
+        anahtar = proje_adi.strip().lower()
+        if anahtar in projeler:
+            return projeler[anahtar]
+        for key, value in projeler.items():
+            if key.lower() == anahtar:
+                return value
+        return {}
+    except (OSError, json.JSONDecodeError):
+        return {}

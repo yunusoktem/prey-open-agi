@@ -1,166 +1,71 @@
-
+import os
 from flask import Flask, request, render_template_string
-import json
-from pathlib import Path
-from analiz import ai_analizi
+from analiz import ai_analizi, webde_ara, kayitli_proje_getir
 
 app = Flask(__name__)
-KLASOR = Path(__file__).parent
-PROJE_DOSYASI = KLASOR / "projeler.json"
 
 HTML = """
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prey Open AGI</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #0b1020;
-            color: #f1f5f9;
-        }
-        .container {
-            max-width: 850px;
-            margin: 70px auto;
-            padding: 25px;
-        }
-        .brand {
-            color: #8b9cff;
-            font-size: 15px;
-            letter-spacing: 3px;
-        }
-        h1 {
-            font-size: 42px;
-            margin-bottom: 12px;
-        }
-        .description {
-            color: #aab4c8;
-            line-height: 1.7;
-        }
-        form {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-        }
-        input {
-            flex: 1;
-            min-width: 0;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #303b55;
-            background: #141c30;
-            color: white;
-            font-size: 16px;
-        }
-        button {
-            padding: 15px 20px;
-            border: 0;
-            border-radius: 8px;
-            background: #7185ff;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .result {
-            margin-top: 30px;
-            padding: 24px;
-            border: 1px solid #303b55;
-            border-radius: 12px;
-            background: #11182a;
-            line-height: 1.8;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-        }
-        .error {
-            color: #ffaaaa;
-        }
-        footer {
-            margin-top: 45px;
-            color: #78849d;
-            font-size: 13px;
-        }
-        @media (max-width: 600px) {
-            .container { margin: 30px auto; }
-            h1 { font-size: 32px; }
-            form { flex-direction: column; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prey Open AGI — Project Research</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#eef2ff;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:42px 24px}
+.brand{color:#8795ff;letter-spacing:.2em;font-size:14px;font-weight:700;margin-bottom:26px}
+h1{font-size:clamp(32px,5vw,48px);line-height:1.12;margin:0 0 18px}
+.intro{color:#aeb9d2;line-height:1.7;margin-bottom:28px}
+form{display:flex;gap:12px;margin:26px 0}
+input{flex:1;min-width:0;background:#151d31;color:#fff;border:1px solid #303a52;border-radius:9px;padding:16px;font-size:16px}
+button{background:#7184ff;color:white;border:0;border-radius:9px;padding:0 24px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.6}
+.panel{background:#121a2c;border:1px solid #2b354d;border-radius:14px;padding:24px;margin-top:22px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.error{color:#ff9aab}
+.small{font-size:13px;color:#7f8ba8;margin-top:34px}
+@media(max-width:650px){form{flex-direction:column}button{padding:15px}}
+</style>
 </head>
-<body>
-    <main class="container">
-        <div class="brand">PREY OPEN AGI</div>
-        <h1>Understand Open AGI Projects.</h1>
-        <p class="description">
-            Open AGI ekosistemindeki projeleri analiz et.
-            Teknolojilerini, ürünlerini, token ekonomilerini ve
-            risklerini tek bir yerde incele.
-        </p>
-
-        <form method="POST">
-            <input
-                type="text"
-                name="project"
-                placeholder="Proje adı yaz (ör. Sentient)"
-                value="{{ project }}"
-                required
-            >
-            <button type="submit">Analyze Project</button>
-        </form>
-
-        {% if result %}
-            <div class="result">{{ result }}</div>
-        {% endif %}
-
-        {% if error %}
-            <div class="result error">{{ error }}</div>
-        {% endif %}
-
-        <footer>
-            Prey Open AGI · AI-powered project analysis
-        </footer>
-    </main>
-</body>
-</html>
+<body><main>
+<div class="brand">PREY OPEN AGI</div>
+<h1>Understand Open AGI Projects.</h1>
+<p class="intro">Araştır, kaynakları incele ve açık AGI projelerinin teknolojisini, açıklık durumunu, ürünlerini ve risklerini tek bir yerde değerlendir.</p>
+<form method="post">
+<input name="project" value="{{ project }}" placeholder="Proje adı yaz (ör. Sentient, Open AGI)" required>
+<button type="submit">Analyze Project</button>
+</form>
+{% if message %}<section class="panel error">{{ message }}</section>{% endif %}
+{% if report %}<section class="panel">{{ report }}</section>{% endif %}
+<div class="small">Prey Open AGI · AI-assisted research · Sonuçları kaynaklardan ayrıca doğrulayın.</div>
+</main></body></html>
 """
 
-
 @app.route("/", methods=["GET", "POST"])
-def ana_sayfa():
-    result = ""
-    error = ""
+def home():
     project = ""
-
+    report = ""
+    message = ""
     if request.method == "POST":
         project = request.form.get("project", "").strip()
-
-        try:
-            with open(PROJE_DOSYASI, "r", encoding="utf-8") as dosya:
-                projeler = json.load(dosya)
-
-            anahtar = project.lower()
-
-            if anahtar not in projeler:
-                mevcut = ", ".join(projeler.keys())
-                error = (
-                    "Bu proje henüz veri tabanımızda yok. "
-                    f"Kayıtlı projeler: {mevcut}"
-                )
-            else:
-                result = ai_analizi(projeler[anahtar])
-
-        except Exception as hata:
-            error = f"Analiz sırasında hata oluştu: {hata}"
-
-    return render_template_string(
-        HTML,
-        result=result,
-        error=error,
-        project=project
-    )
-
+        if not project:
+            message = "Lütfen bir proje adı yaz."
+        elif len(project) > 100:
+            message = "Proje adı en fazla 100 karakter olabilir."
+        else:
+            try:
+                stored = kayitli_proje_getir(project)
+                results = webde_ara(project)
+                report = ai_analizi(project, stored, results)
+                if not results:
+                    report += "\n\nNot: Web araması sonuç döndürmedi; bu rapor kayıtlı veriyle sınırlı olabilir."
+            except Exception as e:
+                app.logger.exception("Project analysis failed")
+                message = "Analiz sırasında hata oluştu. Render Logs bölümündeki son hata satırlarını kontrol et."
+    return render_template_string(HTML, project=project, report=report, message=message)
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False)
