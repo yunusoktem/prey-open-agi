@@ -299,5 +299,5 @@ if __name__ == "__main__":
 
 
     except (OSError, json.JSONDecodeError):
-        logger.exception("Kayıtlı proje verileri okunamadı.")
-        return {}
+    logger.exception("Kayıtlı proje verileri okunamadı.")
+    return {}
