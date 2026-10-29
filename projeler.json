@@ -1,0 +1,29 @@
+
+{
+  "sentient": {
+    "ad": "Sentient",
+    "amac": "Açık ve topluluk odaklı AGI ekosistemi geliştirmek.",
+    "teknoloji": "GRID, ROMA ve Dobby gibi bileşenler.",
+    "urun_durumu": "Güncel ürün ve geliştirme durumu ayrıca doğrulanmalı.",
+    "token": {
+      "sembol": "SENT",
+      "arz": "Doğrulanmalı",
+      "dagitim": "Doğrulanmalı",
+      "kullanim": "Doğrulanmalı",
+      "vesting": "Doğrulanmalı"
+    },
+    "guclu_yonler": [
+      "Açık kaynak ve topluluk odaklı yaklaşım",
+      "Birden fazla AI bileşenini bir araya getiren ekosistem"
+    ],
+    "riskler": [
+      "Token ekonomisi ve değer yakalama mekanizması doğrulanmalı",
+      "Ürünlerin gerçek kullanım düzeyi araştırılmalı"
+    ],
+    "bilinmeyenler": [
+      "Güncel token ekonomisi",
+      "Güncel ürün metrikleri",
+      "Resmî yol haritası ve teslim tarihleri"
+    ]
+  }
+}
