@@ -1,193 +1,778 @@
 
 import os
 import logging
-
-import bleach
-import markdown
 from flask import Flask, request, render_template_string
-from markupsafe import Markup
+from markupsafe import Markup, escape
+import markdown
+import bleach
 
 from analiz import (
     LANGUAGES,
-    ai_analizi,
     webde_ara,
     kayitli_proje_getir,
+    ai_analizi,
 )
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 ALLOWED_TAGS = set(bleach.sanitizer.ALLOWED_TAGS).union({
     "p", "h1", "h2", "h3", "h4", "hr", "pre", "code",
+    "blockquote", "ul", "ol", "li", "strong", "em",
     "table", "thead", "tbody", "tr", "th", "td",
-    "ul", "ol", "li", "blockquote", "br", "strong", "em",
+    "del", "input", "sup", "sub",
 })
 
 ALLOWED_ATTRIBUTES = {
     **bleach.sanitizer.ALLOWED_ATTRIBUTES,
-    "a": ["href", "title", "rel"],
-    "th": ["align"],
-    "td": ["align"],
+    "a": ["href", "title", "target", "rel"],
+    "code": ["class"],
+    "input": ["type", "checked", "disabled"],
 }
 
-HTML = """
-<!doctype html>
-<html lang="{{ lang }}">
+
+def render_report(text):
+    """Markdown raporunu güvenli HTML'e dönüştürür."""
+    html = markdown.markdown(
+        text or "",
+        extensions=["extra", "nl2br", "sane_lists"],
+    )
+    clean_html = bleach.clean(
+        html,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        protocols={"http", "https", "mailto"},
+        strip=True,
+    )
+    return Markup(clean_html)
+
+
+HTML = r"""
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prey Open AGI — Project Research</title>
-<style>
-:root{color-scheme:dark}
-*{box-sizing:border-box}
-body{margin:0;background:#0b1020;color:#eef2ff;font-family:Inter,system-ui,sans-serif}
-main{max-width:1120px;margin:0 auto;padding:42px 24px}
-.brand{color:#8795ff;letter-spacing:.2em;font-size:14px;font-weight:700;margin-bottom:26px}
-h1{font-size:clamp(32px,5vw,48px);line-height:1.12;margin:0 0 18px}
-.intro{color:#aeb9d2;line-height:1.7;margin-bottom:28px}
-form{display:flex;gap:12px;margin:26px 0;flex-wrap:wrap}
-input,select{flex:1;min-width:180px;background:#151d31;color:#fff;border:1px solid #303a52;border-radius:9px;padding:15px;font-size:16px}
-button{background:#7184ff;color:white;border:0;border-radius:9px;padding:0 24px;min-height:50px;font-weight:700;cursor:pointer}
-.panel{background:#121a2c;border:1px solid #2b354d;border-radius:14px;padding:24px;margin-top:22px;line-height:1.75;overflow-wrap:anywhere}
-.report h1,.report h2,.report h3{line-height:1.3;margin:1.3em 0 .5em}
-.report h1{font-size:1.6rem}
-.report h2{font-size:1.35rem}
-.report h3{font-size:1.1rem}
-.report table{display:block;overflow-x:auto;border-collapse:collapse;max-width:100%}
-.report th,.report td{border:1px solid #3a4660;padding:8px 10px;text-align:left}
-.report th{background:#1b2740}
-.report a{color:#aab8ff;overflow-wrap:anywhere}
-.report code{background:#202b42;padding:2px 5px;border-radius:4px}
-.report pre{background:#0a1020;padding:14px;border-radius:8px;overflow:auto}
-.error{color:#ffb4bf}
-.small{font-size:13px;color:#7f8ba8;margin-top:34px}
-.notice{font-size:14px;color:#b9c4dc}
-@media(max-width:650px){
-main{padding:28px 15px}
-form{flex-direction:column}
-input,select,button{width:100%}
-.panel{padding:16px}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1020">
+    <title>Prey Open AGI — AI Research</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0b1020;
+            --surface: #11182b;
+            --surface-2: #172039;
+            --surface-3: #1d2945;
+            --text: #edf1ff;
+            --muted: #a0abc5;
+            --border: #293552;
+            --accent: #9385ff;
+            --accent-2: #65b8ff;
+            --button-text: #0b1020;
+            --input-bg: #0d1426;
+            --shadow: 0 18px 50px rgba(0, 0, 0, .18);
+        }
+
+        html[data-theme="light"] {
+            color-scheme: light;
+            --bg: #f4f6fb;
+            --surface: #ffffff;
+            --surface-2: #f0f2fa;
+            --surface-3: #e6e9f5;
+            --text: #182039;
+            --muted: #626d86;
+            --border: #dce1ee;
+            --accent: #6654dc;
+            --accent-2: #267acb;
+            --button-text: #ffffff;
+            --input-bg: #ffffff;
+            --shadow: 0 15px 40px rgba(29, 42, 75, .07);
+        }
+
+        * { box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(
+                    ellipse at 50% -15%,
+                    color-mix(in srgb, var(--accent) 13%, transparent),
+                    transparent 55%
+                ),
+                var(--bg);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                         BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.65;
+            transition: background-color .2s, color .2s;
+        }
+
+        button, input, select { font: inherit; }
+
+        button, a, input, select {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            width: min(1080px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background: color-mix(in srgb, var(--bg) 88%, transparent);
+        }
+
+        .nav {
+            min-height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            display: grid;
+            place-items: center;
+            border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+            border-radius: 14px;
+            background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+            color: var(--accent);
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .brand-name {
+            font-weight: 800;
+            font-size: 17px;
+            letter-spacing: -.45px;
+            line-height: 1.25;
+        }
+
+        .brand-subtitle {
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: background .2s, border-color .2s, transform .2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--surface-2);
+            border-color: var(--accent);
+        }
+
+        .theme-toggle:active { transform: scale(.98); }
+
+        main { padding: 58px 0 80px; }
+
+        .hero {
+            text-align: center;
+            max-width: 760px;
+            margin: 0 auto 36px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .4px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #39c99a;
+            box-shadow: 0 0 12px rgba(57, 201, 154, .45);
+        }
+
+        h1 {
+            margin: 22px 0 12px;
+            font-size: clamp(34px, 6vw, 55px);
+            line-height: 1.1;
+            letter-spacing: -2px;
+        }
+
+        .gradient-text {
+            background: linear-gradient(110deg, var(--accent), var(--accent-2));
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .hero p {
+            max-width: 620px;
+            margin: 0 auto;
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 26px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel-heading {
+            margin: 0 0 6px;
+            font-size: 19px;
+            letter-spacing: -.3px;
+        }
+
+        .panel-description {
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 190px;
+            gap: 16px;
+            align-items: end;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        input::placeholder { color: var(--muted); opacity: .8; }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 17%, transparent);
+        }
+
+        .submit-button {
+            display: flex;
+            width: 100%;
+            min-height: 49px;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+            padding: 13px 18px;
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(110deg, var(--accent), var(--accent-2));
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            transition: filter .2s, transform .2s;
+        }
+
+        .submit-button:hover { filter: brightness(1.08); }
+        .submit-button:active { transform: scale(.99); }
+
+        .hint {
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .results { margin-top: 28px; }
+
+        .section-title {
+            margin: 0 0 16px;
+            font-size: 22px;
+            letter-spacing: -.5px;
+        }
+
+        .report {
+            padding: clamp(20px, 4vw, 36px);
+            overflow-wrap: anywhere;
+        }
+
+        .report h1, .report h2, .report h3, .report h4 {
+            text-align: left;
+            letter-spacing: -.4px;
+            line-height: 1.35;
+            margin: 1.6em 0 .6em;
+        }
+
+        .report h1 { font-size: 28px; }
+        .report h2 {
+            font-size: 23px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .report h3 { font-size: 18px; }
+        .report h4 { font-size: 16px; }
+
+        .report h1:first-child, .report h2:first-child { margin-top: 0; }
+
+        .report p, .report li { color: var(--text); }
+
+        .report a {
+            color: var(--accent-2);
+            overflow-wrap: anywhere;
+        }
+
+        .report blockquote {
+            margin: 18px 0;
+            padding: 12px 18px;
+            border-left: 3px solid var(--accent);
+            background: var(--surface-2);
+            color: var(--muted);
+        }
+
+        .report pre {
+            overflow-x: auto;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--input-bg);
+        }
+
+        .report code {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: .9em;
+        }
+
+        .report :not(pre) > code {
+            padding: 2px 5px;
+            border-radius: 5px;
+            background: var(--surface-3);
+        }
+
+        .report table {
+            width: 100%;
+            display: block;
+            overflow-x: auto;
+            border-collapse: collapse;
+        }
+
+        .report th, .report td {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .report th { background: var(--surface-2); }
+
+        .sources {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .source-card {
+            min-width: 0;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--surface);
+            transition: border-color .2s, background .2s;
+        }
+
+        .source-card:hover {
+            border-color: var(--accent);
+            background: var(--surface-2);
+        }
+
+        .source-card a {
+            color: var(--text);
+            font-weight: 750;
+            text-decoration: none;
+            overflow-wrap: anywhere;
+        }
+
+        .source-card a:hover { color: var(--accent); }
+
+        .source-card p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .source-url {
+            display: block;
+            margin-top: 8px;
+            color: var(--accent-2);
+            font-size: 11px;
+            overflow-wrap: anywhere;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 15px 18px;
+            border: 1px solid #d46b78;
+            border-radius: 12px;
+            background: color-mix(in srgb, #d46b78 10%, var(--surface));
+            color: var(--text);
+        }
+
+        .count {
+            display: inline-flex;
+            padding: 4px 10px;
+            margin-left: 6px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface-2);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 750;
+            vertical-align: middle;
+        }
+
+        footer {
+            padding: 22px 0;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            text-align: center;
+            font-size: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .container { width: min(100% - 24px, 1080px); }
+            .nav { min-height: 68px; gap: 10px; }
+            .brand-icon { width: 36px; height: 36px; }
+            .brand-name { font-size: 14px; }
+            .brand-subtitle { font-size: 9px; letter-spacing: 1px; }
+            .theme-toggle { padding: 9px 10px; font-size: 12px; }
+            main { padding-top: 38px; }
+            .hero p { font-size: 14px; }
+            .panel { padding: 18px; border-radius: 17px; }
+            .form-grid, .sources { grid-template-columns: 1fr; }
+            .form-grid { gap: 14px; }
+            .submit-button { margin-top: 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                transition-duration: .01ms !important;
+            }
+        }
+    </style>
+
+    <script>
+        (function () {
+            try {
+                const saved = localStorage.getItem("prey-theme");
+                const theme = saved === "light" ? "light" : "dark";
+                document.documentElement.dataset.theme = theme;
+            } catch (e) {
+                document.documentElement.dataset.theme = "dark";
+            }
+        })();
+    </script>
 </head>
+
 <body>
-<main>
-<div class="brand">PREY OPEN AGI</div>
-<h1>Understand Open AGI Projects.</h1>
-<p class="intro">
-Research projects, inspect available sources, and assess technology,
-openness, products, token economics, and risks.
-</p>
+<header>
+    <div class="container nav">
+        <div class="brand">
+            <div class="brand-icon" aria-hidden="true">P</div>
+            <div>
+                <div class="brand-name">Prey Open AGI</div>
+                <div class="brand-subtitle">Open Research Intelligence</div>
+            </div>
+        </div>
 
-<form method="post">
-<input name="project" value="{{ project }}" maxlength="100"
-placeholder="Project name (e.g. Sentient)" required>
+        <button
+            type="button"
+            class="theme-toggle"
+            id="themeToggle"
+            aria-label="Gündüz moduna geç"
+            aria-pressed="false"
+        >
+            <span id="themeIcon" aria-hidden="true">☀</span>
+            <span id="themeLabel">Gündüz</span>
+        </button>
+    </div>
+</header>
 
-<select name="lang" aria-label="Report language">
-{% for code, name in languages.items() %}
-<option value="{{ code }}" {% if code == lang %}selected{% endif %}>
-{{ name }}
-</option>
-{% endfor %}
-</select>
+<main class="container">
+    <section class="hero">
+        <div class="eyebrow">
+            <span class="status-dot"></span>
+            Open-source AI research
+        </div>
+        <h1>Explore the <span class="gradient-text">Open Intelligence</span></h1>
+        <p>
+            Projeleri araştır, teknik kaynakları keşfet ve yapay zekâ
+            destekli analiz raporlarını tek bir yerde oluştur.
+        </p>
+    </section>
 
-<button type="submit">Analyze Project</button>
-</form>
+    <section class="panel" aria-labelledby="searchTitle">
+        <h2 class="panel-heading" id="searchTitle">Proje araştırması</h2>
+        <p class="panel-description">
+            Projenin adını gir ve araştırma raporunu oluştur.
+        </p>
 
-{% if message %}
-<section class="panel error">{{ message }}</section>
-{% endif %}
+        <form method="POST" action="/" id="researchForm">
+            <div class="form-grid">
+                <div>
+                    <label for="proje_adi">Proje adı veya araştırma konusu</label>
+                    <input
+                        type="text"
+                        id="proje_adi"
+                        name="proje_adi"
+                        placeholder="Örn. Sentient Foundation"
+                        value="{{ proje_adi }}"
+                        required
+                        maxlength="200"
+                        autocomplete="off"
+                    >
+                </div>
 
-{% if report %}
-<section class="panel report">{{ report }}</section>
-<p class="notice">
-Search results: {{ source_count }}. Search snippets are leads,
-not independent verification.
-</p>
-{% endif %}
+                <div>
+                    <label for="dil">Rapor dili</label>
+                    <select id="dil" name="dil">
+                        {% for code, name in languages.items() %}
+                            <option value="{{ code }}"
+                                {% if code == dil %}selected{% endif %}>
+                                {{ name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-<div class="small">
-Prey Open AGI · AI-assisted research · Verify important claims with primary sources.
-</div>
+            <button type="submit" class="submit-button" id="submitButton">
+                <span aria-hidden="true">⌕</span>
+                <span id="submitLabel">Araştırmayı başlat</span>
+            </button>
+            <p class="hint">
+                Analiz, erişilebilen kaynaklara dayanır. Doğrulanamayan
+                bilgiler raporda ayrıca belirtilmelidir.
+            </p>
+        </form>
+    </section>
+
+    {% if hata %}
+        <div class="error" role="alert">{{ hata }}</div>
+    {% endif %}
+
+    {% if rapor %}
+        <section class="results" aria-labelledby="reportTitle">
+            <h2 class="section-title" id="reportTitle">
+                Araştırma raporu
+                <span class="count">{{ kaynaklar|length }} kaynak</span>
+            </h2>
+            <article class="panel report">
+                {{ rapor }}
+            </article>
+        </section>
+    {% endif %}
+
+    {% if kaynaklar %}
+        <section class="results" aria-labelledby="sourcesTitle">
+            <h2 class="section-title" id="sourcesTitle">
+                Araştırma kaynakları
+                <span class="count">{{ kaynaklar|length }}</span>
+            </h2>
+
+            <div class="sources">
+                {% for kaynak in kaynaklar %}
+                    <article class="source-card">
+                        <a href="{{ kaynak.url }}"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            {{ kaynak.baslik or kaynak.url }}
+                        </a>
+
+                        {% if kaynak.aciklama %}
+                            <p>{{ kaynak.aciklama }}</p>
+                        {% endif %}
+
+                        <span class="source-url">{{ kaynak.url }}</span>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
 </main>
+
+<footer>
+    <div class="container">
+        Prey Open AGI · Open-source research intelligence
+    </div>
+</footer>
+
+<script>
+    (function () {
+        const root = document.documentElement;
+        const button = document.getElementById("themeToggle");
+        const icon = document.getElementById("themeIcon");
+        const label = document.getElementById("themeLabel");
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+        function updateThemeButton(theme) {
+            const isDark = theme === "dark";
+            icon.textContent = isDark ? "☀" : "☾";
+            label.textContent = isDark ? "Gündüz" : "Gece";
+            button.setAttribute(
+                "aria-label",
+                isDark ? "Gündüz moduna geç" : "Gece moduna geç"
+            );
+            button.setAttribute("aria-pressed", String(!isDark));
+
+            if (metaTheme) {
+                metaTheme.setAttribute(
+                    "content",
+                    isDark ? "#0b1020" : "#f4f6fb"
+                );
+            }
+        }
+
+        function setTheme(theme) {
+            root.dataset.theme = theme;
+            updateThemeButton(theme);
+
+            try {
+                localStorage.setItem("prey-theme", theme);
+            } catch (e) {
+                // Depolama kapalıysa tema geçişi yine çalışır.
+            }
+        }
+
+        updateThemeButton(root.dataset.theme || "dark");
+
+        button.addEventListener("click", function () {
+            const current = root.dataset.theme || "dark";
+            setTheme(current === "dark" ? "light" : "dark");
+        });
+
+        const form = document.getElementById("researchForm");
+        const submitButton = document.getElementById("submitButton");
+        const submitLabel = document.getElementById("submitLabel");
+
+        form.addEventListener("submit", function () {
+            submitButton.disabled = true;
+            submitButton.style.opacity = ".75";
+            submitLabel.textContent = "Araştırılıyor...";
+        });
+    })();
+</script>
 </body>
 </html>
 """
 
 
 @app.route("/", methods=["GET", "POST"])
-def home():
-    project = ""
-    lang = "tr"
-    report_html = ""
-    message = ""
-    source_count = 0
+def index():
+    proje_adi = ""
+    dil = "tr"
+    rapor = None
+    kaynaklar = []
+    hata = None
 
     if request.method == "POST":
-        project = request.form.get("project", "").strip()
-        lang = request.form.get("lang", "tr")
+        proje_adi = request.form.get("proje_adi", "").strip()
+        dil = request.form.get("dil", "tr").strip()
 
-        if lang not in LANGUAGES:
-            lang = "tr"
+        if dil not in LANGUAGES:
+            dil = "tr"
 
-        if not project:
-            message = "Lütfen bir proje adı yaz."
-        elif len(project) > 100:
-            message = "Proje adı en fazla 100 karakter olabilir."
+        if not proje_adi:
+            hata = "Lütfen bir proje adı veya araştırma konusu gir."
         else:
             try:
-                stored = kayitli_proje_getir(project)
-                results = webde_ara(project)
-                source_count = len(results)
+                proje_verisi = kayitli_proje_getir(proje_adi)
 
-                report_text = ai_analizi(
-                    project,
-                    stored,
-                    results,
-                    dil=lang,
-                )
+                try:
+                    kaynaklar = webde_ara(proje_adi)
+                    if not isinstance(kaynaklar, list):
+                        kaynaklar = []
+                except Exception:
+                    logger.exception("Web araştırması başarısız.")
+                    kaynaklar = []
 
-                if not results:
-                    report_text += (
-                        "\n\n---\n\n"
-                        "**Research limitation:** Web search returned no results. "
-                        "Some information may be missing."
+                try:
+                    rapor_metni = ai_analizi(
+                        proje_adi,
+                        proje_verisi=proje_verisi,
+                        arama_sonuclari=kaynaklar,
+                        dil=dil,
+                    )
+                    rapor = render_report(rapor_metni)
+                except Exception:
+                    logger.exception("AI analizi başarısız.")
+                    hata = (
+                        "Analiz oluşturulamadı. Fortytwo API anahtarını, "
+                        "bağlantıyı ve sunucu günlüklerini kontrol et."
                     )
 
-                rendered = markdown.markdown(
-                    report_text,
-                    extensions=["tables", "fenced_code", "sane_lists"],
-                    output_format="html5",
-                )
-
-                report_html = Markup(
-                    bleach.clean(
-                        rendered,
-                        tags=ALLOWED_TAGS,
-                        attributes=ALLOWED_ATTRIBUTES,
-                        protocols={"http", "https", "mailto"},
-                        strip=True,
+                if not kaynaklar and not hata:
+                    hata = (
+                        "Arama sonuçları alınamadı. İnternet bağlantısını "
+                        "ve ücretsiz arama sağlayıcısını kontrol et."
                     )
-                )
 
-            except Exception as exc:
-                app.logger.exception(
-                    "Project analysis failed for %r", project
-                )
-                message = (
-                    str(exc)
-                    if isinstance(exc, RuntimeError)
-                    else "Analysis failed. Check Render Logs for details."
-                )
+            except Exception:
+                logger.exception("Araştırma isteği işlenemedi.")
+                hata = "İstek işlenirken bir hata oluştu. Sunucu günlüklerini kontrol et."
 
     return render_template_string(
         HTML,
-        project=project,
-        lang=lang,
+        proje_adi=proje_adi,
+        dil=dil,
         languages=LANGUAGES,
-        report=report_html,
-        message=message,
-        source_count=source_count,
+        rapor=rapor,
+        kaynaklar=kaynaklar,
+        hata=hata,
     )
 
 
