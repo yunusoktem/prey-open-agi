@@ -298,6 +298,4 @@ if __name__ == "__main__":
             print(f"\nArama başarısız: {hata}")
 
 
-    except (OSError, json.JSONDecodeError):
-    logger.exception("Kayıtlı proje verileri okunamadı.")
-    return {}
+    
