@@ -4,7 +4,7 @@ import json
 import os
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
@@ -391,6 +391,13 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
         name = repo.get("name", "")
         full_name = repo.get("full_name", "")
         base = f"https://api.github.com/repos/{owner}/{name}"
+        # Repository details endpoint exposes watchers/subscribers separately from stars.
+        try:
+            detail_response = requests.get(base, headers=headers, timeout=REQUEST_TIMEOUT)
+            if detail_response.ok:
+                repo = {**repo, **detail_response.json()}
+        except (requests.RequestException, ValueError, TypeError):
+            logger.debug("GitHub depo ayrıntıları alınamadı.", exc_info=True)
 
         result = {
             "name": full_name or name,
@@ -398,9 +405,17 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
             "description": repo.get("description") or "Açıklama sağlanmamış.",
             "stars": repo.get("stargazers_count", 0),
             "forks": repo.get("forks_count", 0),
+            "watchers": repo.get("subscribers_count", repo.get("watchers_count", 0)),
             "open_issues": repo.get("open_issues_count", 0),
             "language": repo.get("language") or "Belirtilmemiş",
             "created_at": (repo.get("created_at") or "")[:10],
+            "repo_age_days": None,
+            "days_since_push": None,
+            "commits_last_30_days": 0,
+            "commits_last_90_days": 0,
+            "commit_sample_size": 0,
+            "weekly_activity": [],
+            "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "updated_at": (repo.get("updated_at") or "")[:10],
             "pushed_at": (repo.get("pushed_at") or "")[:10],
             "default_branch": repo.get("default_branch") or "main",
@@ -412,25 +427,66 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
             ),
         }
 
-        # Son commitler
+        # Son commitler + gerçek haftalık aktivite özeti.
+        # GitHub'ın son 100 commit'i kullanılır; bu tüm depo geçmişi anlamına gelmez.
         try:
             commits_response = requests.get(
                 f"{base}/commits",
-                params={"per_page": max(1, min(int(max_commit), 10))},
+                params={"per_page": 100},
                 headers=headers,
                 timeout=REQUEST_TIMEOUT,
             )
             if commits_response.ok:
-                for item in commits_response.json():
+                commit_items = commits_response.json()
+                now = datetime.now(timezone.utc)
+                dates = []
+                for item in commit_items:
                     commit = item.get("commit", {})
                     author = commit.get("author") or {}
-                    message = (commit.get("message") or "").splitlines()[0]
-                    result["commits"].append({
-                        "message": message[:180],
-                        "date": (author.get("date") or "")[:10],
-                        "author": (author.get("name") or "Bilinmiyor")[:80],
-                        "url": item.get("html_url", ""),
-                    })
+                    date_text = author.get("date") or (commit.get("committer") or {}).get("date") or ""
+                    try:
+                        parsed_date = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+                        if parsed_date.tzinfo is None:
+                            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                        dates.append(parsed_date.astimezone(timezone.utc))
+                    except (ValueError, TypeError):
+                        parsed_date = None
+                    if len(result["commits"]) < max(1, min(int(max_commit), 10)):
+                        message = (commit.get("message") or "Commit").splitlines()[0]
+                        result["commits"].append({
+                            "message": message[:180],
+                            "date": date_text[:10],
+                            "author": (author.get("name") or "Bilinmiyor")[:80],
+                            "url": item.get("html_url", ""),
+                        })
+                result["commit_sample_size"] = len(dates)
+                result["commits_last_30_days"] = sum(1 for d in dates if (now - d).days <= 30 and d <= now)
+                result["commits_last_90_days"] = sum(1 for d in dates if (now - d).days <= 90 and d <= now)
+                pushed_text = repo.get("pushed_at") or ""
+                try:
+                    pushed_date = datetime.fromisoformat(pushed_text.replace("Z", "+00:00"))
+                    result["days_since_push"] = max(0, (now - pushed_date).days)
+                except (ValueError, TypeError):
+                    pass
+                created_text = repo.get("created_at") or ""
+                try:
+                    created_date = datetime.fromisoformat(created_text.replace("Z", "+00:00"))
+                    result["repo_age_days"] = max(0, (now - created_date).days)
+                except (ValueError, TypeError):
+                    pass
+
+                # 12 haftalık mini grafik; yalnızca indirilen son 100 commit üzerinden.
+                current_monday = now.date() - timedelta(days=now.weekday())
+                weeks = []
+                for offset in range(11, -1, -1):
+                    week_start = current_monday - timedelta(weeks=offset)
+                    week_end = week_start + timedelta(days=7)
+                    count = sum(1 for d in dates if week_start <= d.date() < week_end)
+                    weeks.append({"label": week_start.strftime("%d/%m"), "count": count})
+                max_count = max((week["count"] for week in weeks), default=0) or 1
+                for week in weeks:
+                    week["height"] = max(4, round(week["count"] / max_count * 100))
+                result["weekly_activity"] = weeks
         except (requests.RequestException, ValueError, TypeError):
             logger.debug("GitHub commit bilgileri alınamadı.", exc_info=True)
 
