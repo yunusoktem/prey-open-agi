@@ -642,11 +642,52 @@ HTML = r"""
             .submit-button { margin-top: 16px; }
         }
 
+        /* Visible motion layer: animated ambient glow, shimmer, float and scroll reveals. */
+        body { isolation: isolate; overflow-x: hidden; }
+        body::before, body::after {
+            content: ""; position: fixed; z-index: -1; pointer-events: none;
+            width: 32rem; height: 32rem; border-radius: 50%; filter: blur(80px);
+            opacity: .14; will-change: transform;
+        }
+        body::before { top: 10%; left: -18rem; background: var(--accent); animation: ambientDrift 18s ease-in-out infinite alternate; }
+        body::after { right: -18rem; bottom: 2%; background: var(--accent-2); animation: ambientDrift 22s ease-in-out infinite alternate-reverse; }
+        @keyframes ambientDrift { from { transform: translate3d(0,-2rem,0) scale(.9); } to { transform: translate3d(5rem,3rem,0) scale(1.15); } }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(57,201,154,.35); } 50% { box-shadow: 0 0 0 7px rgba(57,201,154,0); } }
+        @keyframes titleShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+        @keyframes iconFloat { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(3deg); } }
+        @keyframes buttonShine { 0% { transform: translateX(-140%) skewX(-20deg); } 100% { transform: translateX(240%) skewX(-20deg); } }
+        .brand-icon { animation: iconFloat 5s ease-in-out infinite; }
+        .status-dot { animation: pulseGlow 2s ease-in-out infinite; }
+        .gradient-text { background-size: 200% 100%; animation: titleShimmer 6s linear infinite; }
+        .eyebrow { animation: fadeSlideUp .7s both; }
+        .hero h1 { animation: fadeSlideUp .8s .08s both; }
+        .hero > p { animation: fadeSlideUp .8s .18s both; }
+        .feature-card { position: relative; overflow: hidden; transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease; animation: fadeSlideUp .65s both; }
+        .feature-card:nth-child(2) { animation-delay: .12s; }
+        .feature-card:nth-child(3) { animation-delay: .24s; }
+        .feature-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, var(--accent) 9%, transparent) 50%, transparent 75%); transform: translateX(-120%); transition: transform .65s ease; }
+        .feature-card:hover { transform: translateY(-7px); border-color: var(--accent); box-shadow: 0 16px 38px color-mix(in srgb, var(--accent) 12%, transparent); }
+        .feature-card:hover::after { transform: translateX(120%); }
+        .feature-icon { transition: transform .3s ease; }
+        .feature-card:hover .feature-icon { transform: translateY(-3px) rotate(-7deg) scale(1.08); }
+        .panel, .github-panel, .results, .sources, .error { animation: fadeSlideUp .7s both; }
+        .panel { animation-delay: .12s; transition: border-color .25s ease, box-shadow .25s ease; }
+        .panel:focus-within { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); box-shadow: 0 18px 55px color-mix(in srgb, var(--accent) 10%, transparent); }
+        .submit-button { position: relative; overflow: hidden; }
+        .submit-button::after { content: ""; position: absolute; top: -30%; left: 0; width: 35%; height: 160%; background: rgba(255,255,255,.22); filter: blur(8px); transform: translateX(-140%) skewX(-20deg); }
+        .submit-button:hover::after { animation: buttonShine .8s ease; }
+        .github-metric, .commit-item, .source-card { transition: transform .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease; }
+        .github-metric:hover, .commit-item:hover, .source-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 9%, transparent); }
+        .theme-toggle, .language-toggle { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+        .theme-toggle:hover, .language-toggle:hover { transform: translateY(-2px); }
+        .reveal-on-scroll { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.7,.2,1); }
+        .reveal-on-scroll.is-visible { opacity: 1; transform: translateY(0); }
+        .language-dropdown:not([hidden]) { animation: fadeSlideUp .18s ease both; transform-origin: top right; }
+
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                scroll-behavior: auto !important;
-                transition-duration: .01ms !important;
-            }
+            *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+            .reveal-on-scroll { opacity: 1; transform: none; }
         }
     </style>
 
@@ -906,6 +947,27 @@ HTML = r"""
         const languageOptions = Array.from(
             document.querySelectorAll(".language-option")
         );
+
+        // Staggered scroll-in animations for content panels and result sections.
+        try {
+            const motionTargets = document.querySelectorAll(
+                ".panel, .github-panel, .results, .sources, .error, .github-metric, .commit-item, .source-card"
+            );
+            motionTargets.forEach(function (element) { element.classList.add("reveal-on-scroll"); });
+            if ("IntersectionObserver" in window) {
+                const motionObserver = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add("is-visible");
+                            motionObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.08, rootMargin: "0px 0px -24px 0px" });
+                motionTargets.forEach(function (element) { motionObserver.observe(element); });
+            } else {
+                motionTargets.forEach(function (element) { element.classList.add("is-visible"); });
+            }
+        } catch (e) { /* Motion is decorative; the site remains usable if unsupported. */ }
 
         const UI_TEXT = {
             tr: { stars:"Stars", forks:"Forks", issues:"Açık issue / PR sayacı*", mainLanguage:"Ana dil", commits:"Son commitler", brandSubtitle:"Açık Araştırma Zekâsı", eyebrow:"AÇIK KAYNAKLI AI ARAŞTIRMASI", heroTitle:"Açık Zekâyı Keşfet", heroDescription:"Open AGI projelerini; teknik kaynaklar, gerçek geliştirme sinyalleri ve kaynak gösteren AI analiziyle tek yerde araştır.", featureResearchTitle:"Canlı kaynak araştırması", featureResearchText:"Resmî siteler, dokümantasyon, duyurular ve kaynak bağlantıları tek raporda.", featureGithubTitle:"GitHub geliştirme sinyalleri", featureGithubText:"Stars, forks, son commitler ve sürüm bilgileriyle açık geliştirme etkinliğini incele.", featureEvidenceTitle:"Kanıta dayalı analiz", featureEvidenceText:"Teknik yapı, ürün ilerlemesi, token ekonomisi ve riskleri kaynaklarla birlikte değerlendir.", searchTitle:"Proje araştırması", searchDescription:"Proje adını gir; web kaynaklarını, GitHub geliştirme verilerini ve AI analizini bir arada incele.", projectLabel:"Proje adı veya araştırma konusu", placeholder:"Örn. Sentient Foundation", submit:"Araştırmayı başlat", loading:"Araştırılıyor...", hint:"Analiz erişilebilen kaynaklara dayanır. Proje adıyla eşleşmeyen GitHub depoları olası eşleşme olarak işaretlenir.", reportTitle:"Araştırma raporu", sourcesTitle:"Araştırma kaynakları", githubTitle:"GitHub gelişim özeti", themeDark:"Gündüz", themeLight:"Gece", themeDarkAria:"Gündüz moduna geç", themeLightAria:"Gece moduna geç", errorEmpty:"Lütfen bir proje adı veya araştırma konusu gir.", footer:"Açık kaynak araştırma zekâsı" },
