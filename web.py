@@ -642,51 +642,63 @@ HTML = r"""
             .submit-button { margin-top: 16px; }
         }
 
-        /* Visible motion layer: animated ambient glow, shimmer, float and scroll reveals. */
-        body { isolation: isolate; overflow-x: hidden; }
-        body::before, body::after {
-            content: ""; position: fixed; z-index: -1; pointer-events: none;
-            width: 32rem; height: 32rem; border-radius: 50%; filter: blur(80px);
-            opacity: .14; will-change: transform;
+        /* HIGH-VISIBILITY MOTION: animated grid, glowing orbs, floating cards and CTA pulse. */
+        body { isolation: isolate; overflow-x: hidden; position: relative; }
+        body::before {
+            content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background:
+              radial-gradient(circle at 12% 18%, rgba(39, 190, 255, .18), transparent 27%),
+              radial-gradient(circle at 85% 30%, rgba(48, 230, 166, .15), transparent 28%),
+              radial-gradient(circle at 55% 90%, rgba(117, 92, 255, .12), transparent 30%),
+              linear-gradient(rgba(89, 166, 200, .045) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(89, 166, 200, .045) 1px, transparent 1px);
+            background-size: auto, auto, auto, 42px 42px, 42px 42px;
+            animation: backgroundFlow 16s ease-in-out infinite alternate;
         }
-        body::before { top: 10%; left: -18rem; background: var(--accent); animation: ambientDrift 18s ease-in-out infinite alternate; }
-        body::after { right: -18rem; bottom: 2%; background: var(--accent-2); animation: ambientDrift 22s ease-in-out infinite alternate-reverse; }
-        @keyframes ambientDrift { from { transform: translate3d(0,-2rem,0) scale(.9); } to { transform: translate3d(5rem,3rem,0) scale(1.15); } }
-        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(57,201,154,.35); } 50% { box-shadow: 0 0 0 7px rgba(57,201,154,0); } }
+        body::after {
+            content: ""; position: fixed; z-index: -1; pointer-events: none;
+            width: 25rem; height: 25rem; top: 18%; right: -11rem; border-radius: 50%;
+            background: radial-gradient(circle, rgba(44, 221, 177, .22), rgba(44, 221, 177, 0) 68%);
+            filter: blur(18px); animation: orbFloat 9s ease-in-out infinite alternate;
+        }
+        @keyframes backgroundFlow { 0% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; } 100% { background-position: 5% 8%, -6% 4%, 4% -8%, 21px 21px, 21px 21px; } }
+        @keyframes orbFloat { 0% { transform: translate3d(0, -22px, 0) scale(.88); } 100% { transform: translate3d(-90px, 65px, 0) scale(1.15); } }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(57,201,154,.48), 0 0 16px rgba(57,201,154,.08); } 50% { box-shadow: 0 0 0 9px rgba(57,201,154,0), 0 0 28px rgba(57,201,154,.22); } }
         @keyframes titleShimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-        @keyframes iconFloat { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(3deg); } }
-        @keyframes buttonShine { 0% { transform: translateX(-140%) skewX(-20deg); } 100% { transform: translateX(240%) skewX(-20deg); } }
-        .brand-icon { animation: iconFloat 5s ease-in-out infinite; }
-        .status-dot { animation: pulseGlow 2s ease-in-out infinite; }
-        .gradient-text { background-size: 200% 100%; animation: titleShimmer 6s linear infinite; }
+        @keyframes iconFloat { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-9px) rotate(4deg); } }
+        @keyframes buttonShine { 0% { transform: translateX(-150%) skewX(-20deg); } 100% { transform: translateX(330%) skewX(-20deg); } }
+        .brand-icon { animation: iconFloat 3.8s ease-in-out infinite; }
+        .status-dot { animation: pulseGlow 1.8s ease-in-out infinite; }
+        .gradient-text { background-size: 200% 100%; animation: titleShimmer 4s linear infinite; }
         .eyebrow { animation: fadeSlideUp .7s both; }
         .hero h1 { animation: fadeSlideUp .8s .08s both; }
         .hero > p { animation: fadeSlideUp .8s .18s both; }
-        .feature-card { position: relative; overflow: hidden; transition: transform .28s ease, border-color .28s ease, box-shadow .28s ease; animation: fadeSlideUp .65s both; }
-        .feature-card:nth-child(2) { animation-delay: .12s; }
-        .feature-card:nth-child(3) { animation-delay: .24s; }
-        .feature-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 25%, color-mix(in srgb, var(--accent) 9%, transparent) 50%, transparent 75%); transform: translateX(-120%); transition: transform .65s ease; }
-        .feature-card:hover { transform: translateY(-7px); border-color: var(--accent); box-shadow: 0 16px 38px color-mix(in srgb, var(--accent) 12%, transparent); }
-        .feature-card:hover::after { transform: translateX(120%); }
-        .feature-icon { transition: transform .3s ease; }
-        .feature-card:hover .feature-icon { transform: translateY(-3px) rotate(-7deg) scale(1.08); }
-        .panel, .github-panel, .results, .sources, .error { animation: fadeSlideUp .7s both; }
+        .feature-card { position: relative; overflow: hidden; transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease; animation: fadeSlideUp .8s both, cardBreathe 6s ease-in-out infinite; }
+        .feature-card:nth-child(2) { animation-delay: .12s, 1s; }
+        .feature-card:nth-child(3) { animation-delay: .24s, 2s; }
+        @keyframes cardBreathe { 0%,100% { box-shadow: 0 0 0 rgba(57,201,154,0); } 50% { box-shadow: 0 8px 28px rgba(57,201,154,.08); } }
+        .feature-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(70,220,190,.13) 50%, transparent 80%); transform: translateX(-130%); animation: cardSweep 7s ease-in-out infinite; }
+        .feature-card:nth-child(2)::after { animation-delay: 1.6s; }
+        .feature-card:nth-child(3)::after { animation-delay: 3.2s; }
+        @keyframes cardSweep { 0%, 68%, 100% { transform: translateX(-130%); } 82% { transform: translateX(130%); } }
+        .feature-card:hover { transform: translateY(-9px) scale(1.015); border-color: var(--accent); box-shadow: 0 18px 42px rgba(57,201,154,.17); }
+        .feature-icon { transition: transform .3s ease; animation: iconFloat 4.5s ease-in-out infinite; }
+        .feature-card:hover .feature-icon { transform: translateY(-4px) rotate(-9deg) scale(1.13); }
+        .panel, .github-panel, .results, .sources, .error { animation: fadeSlideUp .75s both; }
         .panel { animation-delay: .12s; transition: border-color .25s ease, box-shadow .25s ease; }
-        .panel:focus-within { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); box-shadow: 0 18px 55px color-mix(in srgb, var(--accent) 10%, transparent); }
-        .submit-button { position: relative; overflow: hidden; }
-        .submit-button::after { content: ""; position: absolute; top: -30%; left: 0; width: 35%; height: 160%; background: rgba(255,255,255,.22); filter: blur(8px); transform: translateX(-140%) skewX(-20deg); }
-        .submit-button:hover::after { animation: buttonShine .8s ease; }
+        .panel:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(57,201,154,.22), 0 18px 55px rgba(57,201,154,.13); }
+        .submit-button { position: relative; overflow: hidden; animation: pulseGlow 3s ease-in-out infinite; }
+        .submit-button::after { content: ""; position: absolute; top: -30%; left: 0; width: 35%; height: 160%; background: rgba(255,255,255,.28); filter: blur(8px); transform: translateX(-150%) skewX(-20deg); animation: buttonShine 4.5s ease-in-out infinite; }
         .github-metric, .commit-item, .source-card { transition: transform .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease; }
-        .github-metric:hover, .commit-item:hover, .source-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 9%, transparent); }
+        .github-metric:hover, .commit-item:hover, .source-card:hover { transform: translateY(-5px) scale(1.01); border-color: var(--accent); box-shadow: 0 12px 30px rgba(57,201,154,.13); }
         .theme-toggle, .language-toggle { transition: transform .2s ease, border-color .2s ease, background .2s ease; }
-        .theme-toggle:hover, .language-toggle:hover { transform: translateY(-2px); }
-        .reveal-on-scroll { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.7,.2,1); }
+        .theme-toggle:hover, .language-toggle:hover { transform: translateY(-3px); }
+        .reveal-on-scroll { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
         .reveal-on-scroll.is-visible { opacity: 1; transform: translateY(0); }
         .language-dropdown:not([hidden]) { animation: fadeSlideUp .18s ease both; transform-origin: top right; }
-
+        @media (max-width: 640px) { body::after { width: 18rem; height: 18rem; } }
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
             .reveal-on-scroll { opacity: 1; transform: none; }
         }
     </style>
