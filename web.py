@@ -10,6 +10,7 @@ from analiz import (
     webde_ara,
     kayitli_proje_getir,
     ai_analizi,
+    github_gelisim_verisi,
 )
 
 app = Flask(__name__)
@@ -403,6 +404,47 @@ HTML = r"""
             font-size: 12px;
         }
 
+
+        .github-panel { margin-top: 28px; }
+        .github-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .github-repo-link { color: var(--accent-2); text-decoration: none; font-weight: 800; }
+        .github-repo-link:hover { text-decoration: underline; }
+        .github-description { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+        .github-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin: 18px 0;
+        }
+        .github-metric {
+            min-width: 0;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            background: var(--surface-2);
+        }
+        .github-metric-label { color: var(--muted); font-size: 11px; }
+        .github-metric-value { margin-top: 4px; font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+        .github-meta { color: var(--muted); font-size: 12px; }
+        .commit-list { display: grid; gap: 9px; margin-top: 14px; }
+        .commit-item {
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--input-bg);
+        }
+        .commit-item a { color: var(--text); text-decoration: none; font-weight: 650; }
+        .commit-item a:hover { color: var(--accent-2); }
+        .commit-date { color: var(--muted); font-size: 11px; margin-top: 4px; }
+        .github-note { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+
         .results { margin-top: 28px; }
 
         .section-title {
@@ -571,6 +613,7 @@ HTML = r"""
             .hero p { font-size: 14px; }
             .panel { padding: 18px; border-radius: 17px; }
             .form-grid, .sources { grid-template-columns: 1fr; }
+            .github-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .form-grid { gap: 14px; }
             .submit-button { margin-top: 16px; }
         }
@@ -703,6 +746,81 @@ HTML = r"""
 
     {% if hata %}
         <div class="error" role="alert">{{ hata }}</div>
+    {% endif %}
+
+    {% if github_veri %}
+        <section class="panel github-panel results" aria-labelledby="githubTitle">
+            <div class="github-head">
+                <div>
+                    <h2 class="panel-heading" id="githubTitle">GitHub gelişim özeti</h2>
+                    <a class="github-repo-link" href="{{ github_veri.url }}" target="_blank" rel="noopener noreferrer">
+                        {{ github_veri.name }} ↗
+                    </a>
+                    <p class="github-description">{{ github_veri.description }}</p>
+                </div>
+                <div class="github-meta">
+                    {% if github_veri.is_exact_match %}
+                        Depo adı proje adıyla eşleşiyor
+                    {% else %}
+                        Olası eşleşme — doğruluğunu kontrol et
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="github-metrics">
+                <div class="github-metric">
+                    <div class="github-metric-label">Stars</div>
+                    <div class="github-metric-value">{{ "{:,}".format(github_veri.stars).replace(",", " ") }}</div>
+                </div>
+                <div class="github-metric">
+                    <div class="github-metric-label">Forks</div>
+                    <div class="github-metric-value">{{ "{:,}".format(github_veri.forks).replace(",", " ") }}</div>
+                </div>
+                <div class="github-metric">
+                    <div class="github-metric-label">Açık issue / PR sayacı*</div>
+                    <div class="github-metric-value">{{ "{:,}".format(github_veri.open_issues).replace(",", " ") }}</div>
+                </div>
+                <div class="github-metric">
+                    <div class="github-metric-label">Ana dil</div>
+                    <div class="github-metric-value" style="font-size:16px">{{ github_veri.language }}</div>
+                </div>
+            </div>
+
+            <div class="github-meta">
+                Oluşturulma: {{ github_veri.created_at or "Bilinmiyor" }} ·
+                Son push: {{ github_veri.pushed_at or "Bilinmiyor" }} ·
+                GitHub kayıt güncellemesi: {{ github_veri.updated_at or "Bilinmiyor" }}
+                {% if github_veri.latest_release %}
+                    <br>Son sürüm:
+                    <a class="github-repo-link" href="{{ github_veri.latest_release.url }}" target="_blank" rel="noopener noreferrer">
+                        {{ github_veri.latest_release.tag or github_veri.latest_release.name }}
+                    </a>
+                    ({{ github_veri.latest_release.date or "tarih yok" }})
+                {% else %}
+                    <br>Son sürüm: GitHub Releases üzerinden doğrulanamadı.
+                {% endif %}
+            </div>
+
+            {% if github_veri.commits %}
+                <h3 class="panel-heading" style="margin-top:24px">Son commitler</h3>
+                <div class="commit-list">
+                    {% for commit in github_veri.commits %}
+                        <div class="commit-item">
+                            <a href="{{ commit.url }}" target="_blank" rel="noopener noreferrer">{{ commit.message }}</a>
+                            <div class="commit-date">{{ commit.date or "Tarih yok" }} · {{ commit.author }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="github-note">Son commit bilgileri alınamadı veya depo herkese açık değil.</p>
+            {% endif %}
+
+            <p class="github-note">
+                * GitHub'ın open_issues_count alanı bazı depolarda açık pull request'leri de içerebilir.
+                Aktivite göstergeleri tek başına yazılım kalitesini veya projenin sürdürülebilirliğini kanıtlamaz.
+                Veriler GitHub API'sinden araştırma sırasında alınır; bu ilk sürüm geçmiş ölçümleri henüz saklamaz.
+            </p>
+        </section>
     {% endif %}
 
     {% if rapor %}
@@ -866,6 +984,7 @@ def index():
     dil = "tr"
     rapor = None
     kaynaklar = []
+    github_veri = None
     hata = None
 
     if request.method == "POST":
@@ -880,6 +999,12 @@ def index():
         else:
             try:
                 proje_verisi = kayitli_proje_getir(proje_adi)
+
+                try:
+                    github_veri = github_gelisim_verisi(proje_adi)
+                except Exception:
+                    logger.exception("GitHub gelişim verileri alınamadı.")
+                    github_veri = None
 
                 try:
                     kaynaklar = webde_ara(proje_adi)
@@ -921,6 +1046,7 @@ def index():
         languages=LANGUAGES,
         rapor=rapor,
         kaynaklar=kaynaklar,
+        github_veri=github_veri,
         hata=hata,
     )
 

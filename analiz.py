@@ -1,4 +1,5 @@
 
+
 import json
 import os
 import logging
@@ -324,6 +325,138 @@ def webde_ara(proje_adi, max_sonuc=6):
     )
 
     return final_results
+
+
+
+def github_gelisim_verisi(proje_adi, max_commit=5):
+    """
+    GitHub'daki olası depo eşleşmesini ve temel gelişim sinyallerini döndürür.
+    Bu metrikler tek başına proje kalitesi veya sürdürülebilirlik kanıtı değildir.
+    """
+    proje = (proje_adi or "").strip()
+    if not proje:
+        return None
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": USER_AGENT,
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        response = requests.get(
+            "https://api.github.com/search/repositories",
+            params={
+                "q": f'"{proje}" in:name,description',
+                "sort": "updated",
+                "order": "desc",
+                "per_page": 5,
+            },
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+        )
+        if not response.ok:
+            logger.warning("GitHub depo araması HTTP %s", response.status_code)
+            return None
+
+        items = response.json().get("items", [])
+        if not items:
+            # İkinci, daha esnek arama
+            response = requests.get(
+                "https://api.github.com/search/repositories",
+                params={"q": proje, "sort": "updated", "order": "desc", "per_page": 5},
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+            )
+            if not response.ok:
+                return None
+            items = response.json().get("items", [])
+
+        if not items:
+            return None
+
+        # Tercih et: proje adını repo adıyla eşleştiren sonuç; aksi durumda
+        # en güncel arama sonucunu göster ve bunu "olası eşleşme" olarak işaretle.
+        norm_project = _norm(proje)
+        repo = next(
+            (
+                item for item in items
+                if _norm(item.get("name", "")) == norm_project
+                or _norm(item.get("full_name", "")) == norm_project
+            ),
+            items[0],
+        )
+
+        owner = repo.get("owner", {}).get("login", "")
+        name = repo.get("name", "")
+        full_name = repo.get("full_name", "")
+        base = f"https://api.github.com/repos/{owner}/{name}"
+
+        result = {
+            "name": full_name or name,
+            "url": repo.get("html_url", ""),
+            "description": repo.get("description") or "Açıklama sağlanmamış.",
+            "stars": repo.get("stargazers_count", 0),
+            "forks": repo.get("forks_count", 0),
+            "open_issues": repo.get("open_issues_count", 0),
+            "language": repo.get("language") or "Belirtilmemiş",
+            "created_at": (repo.get("created_at") or "")[:10],
+            "updated_at": (repo.get("updated_at") or "")[:10],
+            "pushed_at": (repo.get("pushed_at") or "")[:10],
+            "default_branch": repo.get("default_branch") or "main",
+            "commits": [],
+            "latest_release": None,
+            "is_exact_match": (
+                _norm(repo.get("name", "")) == norm_project
+                or _norm(repo.get("full_name", "")) == norm_project
+            ),
+        }
+
+        # Son commitler
+        try:
+            commits_response = requests.get(
+                f"{base}/commits",
+                params={"per_page": max(1, min(int(max_commit), 10))},
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+            )
+            if commits_response.ok:
+                for item in commits_response.json():
+                    commit = item.get("commit", {})
+                    author = commit.get("author") or {}
+                    message = (commit.get("message") or "").splitlines()[0]
+                    result["commits"].append({
+                        "message": message[:180],
+                        "date": (author.get("date") or "")[:10],
+                        "author": (author.get("name") or "Bilinmiyor")[:80],
+                        "url": item.get("html_url", ""),
+                    })
+        except (requests.RequestException, ValueError, TypeError):
+            logger.debug("GitHub commit bilgileri alınamadı.", exc_info=True)
+
+        # En son yayınlanan release
+        try:
+            release_response = requests.get(
+                f"{base}/releases/latest",
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+            )
+            if release_response.ok:
+                release = release_response.json()
+                result["latest_release"] = {
+                    "name": release.get("name") or release.get("tag_name") or "Release",
+                    "tag": release.get("tag_name") or "",
+                    "date": (release.get("published_at") or "")[:10],
+                    "url": release.get("html_url", ""),
+                }
+        except (requests.RequestException, ValueError, TypeError):
+            logger.debug("GitHub release bilgileri alınamadı.", exc_info=True)
+
+        return result
+
+    except (requests.RequestException, ValueError, TypeError, KeyError) as hata:
+        logger.warning("GitHub gelişim verileri alınamadı: %s", hata)
+        return None
 
 
 def kayitli_proje_getir(proje_adi):
