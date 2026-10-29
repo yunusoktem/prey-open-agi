@@ -1,5 +1,8 @@
+
 flask
 requests
 python-dotenv
 gunicorn
 ddgs
+Markdown
+bleach
