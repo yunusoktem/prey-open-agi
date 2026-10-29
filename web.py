@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, url_for
 from markupsafe import Markup, escape
 import markdown
 import bleach
@@ -742,6 +742,7 @@ HTML = r"""
         </div>
 
         <div class="nav-actions">
+            <a class="language-toggle" href="/compare" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">⇄ Compare Projects</a>
             <div class="language-menu" id="languageMenu">
                 <button
                     type="button"
@@ -851,7 +852,7 @@ HTML = r"""
                     {% if github_veri.is_exact_match %}
                         Depo adı proje adıyla eşleşiyor
                     {% else %}
-                        Olası eşleşme — doğruluğunu kontrol et
+                        Olası eşleşme — depo adı tam eşleşmiyor; verileri proje hakkında kesin kanıt sayma.
                     {% endif %}
                 </div>
             </div>
@@ -877,10 +878,10 @@ HTML = r"""
 
             <h3 class="live-data-title" id="liveMetricsTitle">Canlı geliştirme göstergeleri</h3>
             <div class="live-metrics">
-                <div class="live-metric"><div class="live-metric-label" id="commits30Label">Son 30 günde commit</div><div class="live-metric-value">{{ github_veri.commits_last_30_days }}</div></div>
-                <div class="live-metric"><div class="live-metric-label" id="commits90Label">Son 90 günde commit</div><div class="live-metric-value">{{ github_veri.commits_last_90_days }}</div></div>
+                <div class="live-metric"><div class="live-metric-label" id="commits30Label">Son 30 günde commit</div><div class="live-metric-value">{{ github_veri.commits_last_30_days if github_veri.commits_last_30_days is not none else "—" }}</div></div>
+                <div class="live-metric"><div class="live-metric-label" id="commits90Label">Son 90 günde commit</div><div class="live-metric-value">{{ github_veri.commits_last_90_days if github_veri.commits_last_90_days is not none else "—" }}</div></div>
                 <div class="live-metric"><div class="live-metric-label" id="lastPushLabel">Son push üzerinden gün</div><div class="live-metric-value">{{ github_veri.days_since_push if github_veri.days_since_push is not none else "—" }}</div></div>
-                <div class="live-metric"><div class="live-metric-label" id="watchersLabel">Takipçiler</div><div class="live-metric-value">{{ "{:,}".format(github_veri.watchers).replace(",", " ") }}</div></div>
+                <div class="live-metric"><div class="live-metric-label" id="watchersLabel">Takipçiler</div><div class="live-metric-value">{{ "{:,}".format(github_veri.watchers).replace(",", " ") if github_veri.watchers is not none else "—" }}</div></div>
             </div>
 
             <h3 class="live-data-title" id="activityTitle">Son 12 haftalık commit aktivitesi</h3>
@@ -1227,6 +1228,65 @@ def index():
         github_veri=github_veri,
         hata=hata,
     )
+
+
+COMPARE_HTML = r"""
+<!doctype html><html lang="{{ dil }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compare Projects · Prey Open AGI</title>
+<style>
+:root{color-scheme:dark;--bg:#07131d;--panel:#102330;--line:#244151;--text:#e8f3fa;--muted:#a6bbc8;--a:#29d8c2;--b:#64aaff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#123747 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif}.wrap{max-width:1100px;margin:auto;padding:28px 18px 60px}a{color:#70dff0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.brand{font-weight:800;font-size:19px}.pill{border:1px solid var(--line);border-radius:99px;padding:7px 12px;text-decoration:none}.hero{padding:25px 0 15px}.eyebrow{color:var(--a);letter-spacing:.15em;font-size:11px;font-weight:800}.hero h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:8px 0}.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#112633,#0b1c28);border:1px solid var(--line);border-radius:18px;padding:22px;margin:18px 0;box-shadow:0 18px 60px #0002}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input,select{width:100%;background:#071722;color:var(--text);border:1px solid #2b4859;border-radius:10px;padding:13px;font:inherit}.btn{margin-top:15px;border:0;border-radius:10px;padding:13px 18px;background:linear-gradient(100deg,#27d9bf,#62a7ff);color:#04131b;font-weight:800;cursor:pointer;width:100%}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{background:#0a1a25;border:1px solid var(--line);border-radius:12px;padding:14px}.metric strong{font-size:22px;display:block}.metric small{color:var(--muted)}.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tag{display:inline-block;background:#183a47;border-radius:99px;padding:3px 9px;font-size:12px}.warn{color:#ffce80}.report h1,.report h2,.report h3{line-height:1.25}.report table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}.report td,.report th{border:1px solid var(--line);padding:8px;text-align:left}.sources a{overflow-wrap:anywhere}.loading{opacity:.8}@media(max-width:680px){.formgrid,.cols,.metrics{grid-template-columns:1fr}.panel{padding:16px}}
+</style></head><body><div class="wrap"><div class="top"><div class="brand">PREY OPEN AGI <span class="tag">COMPARISON LAB</span></div><a class="pill" href="/">← Research home</a></div>
+<div class="hero"><div class="eyebrow">OPEN-SOURCE PROJECT INTELLIGENCE</div><h1>Compare projects with evidence.</h1><p class="muted">GitHub activity, product maturity, tokenomics and ecosystem claims — side by side, with source links and uncertainty shown explicitly.</p></div>
+<section class="panel"><form method="post"><div class="formgrid"><div><label for="project_a">Project A</label><input id="project_a" name="project_a" value="{{ a }}" placeholder="e.g. Sentient" required></div><div><label for="project_b">Project B</label><input id="project_b" name="project_b" value="{{ b }}" placeholder="e.g. GenLayer" required></div></div><div style="margin-top:14px"><label for="dil">Report language</label><select id="dil" name="dil">{% for code,name in languages.items() %}<option value="{{code}}" {% if code==dil %}selected{% endif %}>{{name}}</option>{% endfor %}</select></div><button class="btn" type="submit">↔ Compare projects</button><p class="muted" style="font-size:12px">Token price/listing data and ecosystem claims are only reported when found in sources. GitHub activity is not a direct measure of project quality.</p></form></section>
+{% if error %}<section class="panel warn">{{ error }}</section>{% endif %}
+{% if result %}<section class="panel"><h2>Live development signals</h2><div class="cols">{% for item in result.github %}<div class="metric"><h3>{{ item.project }}</h3>{% if item.data %}<p><a href="{{item.data.url}}" target="_blank" rel="noopener">{{item.data.name}}</a></p>{% if not item.data.is_exact_match %}<p class="warn">Possible repository match — verify before relying on metrics.</p>{% endif %}<div class="metrics"><div class="metric"><strong>{{ item.data.stars if item.data.stars is not none else '—' }}</strong><small>Stars</small></div><div class="metric"><strong>{{ item.data.forks if item.data.forks is not none else '—' }}</strong><small>Forks</small></div><div class="metric"><strong>{{ item.data.commits_last_30_days if item.data.commits_last_30_days is not none else '—' }}</strong><small>Commits · 30 days</small></div><div class="metric"><strong>{{ item.data.commits_last_90_days if item.data.commits_last_90_days is not none else '—' }}</strong><small>Commits · 90 days</small></div></div><p class="muted">Language: {{item.data.language or 'Unknown'}} · Last push: {{item.data.pushed_at or 'Unknown'}}</p>{% else %}<p class="warn">No sufficiently reliable GitHub repository match found. Metrics are not treated as zero.</p>{% endif %}</div>{% endfor %}</div></section>
+<section class="panel"><h2>Research-based comparison</h2><p class="muted">Tokenomics, listings, product maturity and ecosystem evidence are summarized below. Claims without supporting sources should be treated as unverified.</p><div class="report">{{ result.report|safe }}</div></section>
+<section class="panel sources"><h2>Sources used</h2>{% for src in result.sources %}<div class="metric" style="margin:9px 0"><a href="{{src.url}}" target="_blank" rel="noopener">{{src.baslik or src.url}}</a><p class="muted">{{src.aciklama or ''}}</p></div>{% endfor %}</section>{% endif %}
+</div></body></html>
+"""
+
+@app.route("/compare", methods=["GET", "POST"])
+def compare_projects():
+    a = request.form.get("project_a", "").strip()
+    b = request.form.get("project_b", "").strip()
+    dil = request.form.get("dil", "tr").strip()
+    if dil not in LANGUAGES:
+        dil = "tr"
+    result = None
+    error = None
+    if request.method == "POST":
+        if not a or not b:
+            error = "Enter two project names to compare."
+        elif a.casefold() == b.casefold():
+            error = "Choose two different projects."
+        else:
+            try:
+                github = []
+                for project in (a, b):
+                    try:
+                        data = github_gelisim_verisi(project, max_commit=100)
+                    except Exception:
+                        logger.exception("GitHub comparison lookup failed for %s", project)
+                        data = None
+                    github.append({"project": project, "data": data})
+                sources = []
+                for project in (a, b):
+                    try:
+                        found = webde_ara(project, max_sonuc=4) or []
+                        for item in found:
+                            if item.get("url") and not any(x.get("url") == item.get("url") for x in sources):
+                                sources.append(item)
+                    except Exception:
+                        logger.exception("Comparison web search failed for %s", project)
+                topic = (f"Compare {a} and {b}. Provide an evidence-based side-by-side comparison of technical/product maturity, open-source status, development activity, tokenomics (supply, unlocks, utility only if sourced), exchange listings, ecosystem and partnerships, risks and uncertainty. Use the provided sources only, cite URLs inline, explicitly mark unavailable facts as unknown, do not invent token prices or listing claims, and do not give investment advice. Write the report in {LANGUAGES[dil]}.")
+                report_text = ai_analizi(topic, proje_verisi={"project_a": a, "project_b": b, "github": github}, arama_sonuclari=sources, dil=dil)
+                result = {"github": github, "sources": sources, "report": render_report(report_text)}
+                if not sources and all(not x["data"] for x in github):
+                    error = "No web sources or reliable GitHub matches were found; the AI report may be limited."
+            except Exception:
+                logger.exception("Project comparison failed")
+                error = "Comparison could not be generated. Check the search provider, FORTYTWO_API_KEY and Render logs."
+    return render_template_string(COMPARE_HTML, a=a, b=b, dil=dil, languages=LANGUAGES, result=result, error=error)
 
 
 if __name__ == "__main__":

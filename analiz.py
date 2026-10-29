@@ -375,17 +375,32 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
         if not items:
             return None
 
-        # Tercih et: proje adını repo adıyla eşleştiren sonuç; aksi durumda
-        # en güncel arama sonucunu göster ve bunu "olası eşleşme" olarak işaretle.
+        # Önce isim eşleşmesini ara. Emin olunmayan, alakasız depoyu
+        # canlı veri gibi göstermemek için zayıf eşleşmede paneli gizle.
         norm_project = _norm(proje)
-        repo = next(
-            (
-                item for item in items
-                if _norm(item.get("name", "")) == norm_project
-                or _norm(item.get("full_name", "")) == norm_project
-            ),
-            items[0],
-        )
+        project_tokens = set(norm_project.split())
+        def match_score(item):
+            repo_name = _norm(item.get("name", ""))
+            full_name = _norm(item.get("full_name", ""))
+            description = _norm(item.get("description", ""))
+            repo_tokens = set(repo_name.split())
+            desc_tokens = set(description.split())
+            if repo_name == norm_project or full_name == norm_project:
+                return 100
+            if repo_name and repo_name in norm_project:
+                return 80
+            if norm_project and norm_project in repo_name:
+                return 75
+            name_overlap = len(project_tokens & repo_tokens) / max(1, len(project_tokens))
+            desc_overlap = len(project_tokens & desc_tokens) / max(1, len(project_tokens))
+            return max(name_overlap * 60, desc_overlap * 25)
+
+        ranked_items = sorted(items, key=match_score, reverse=True)
+        repo = ranked_items[0]
+        best_score = match_score(repo)
+        if best_score < 30:
+            logger.info("Güvenilir GitHub depo eşleşmesi bulunamadı: %s", proje)
+            return None
 
         owner = repo.get("owner", {}).get("login", "")
         name = repo.get("name", "")
@@ -411,8 +426,8 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
             "created_at": (repo.get("created_at") or "")[:10],
             "repo_age_days": None,
             "days_since_push": None,
-            "commits_last_30_days": 0,
-            "commits_last_90_days": 0,
+            "commits_last_30_days": None,
+            "commits_last_90_days": None,
             "commit_sample_size": 0,
             "weekly_activity": [],
             "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
@@ -425,6 +440,10 @@ def github_gelisim_verisi(proje_adi, max_commit=5):
                 _norm(repo.get("name", "")) == norm_project
                 or _norm(repo.get("full_name", "")) == norm_project
             ),
+            "match_confidence": "exact" if (
+                _norm(repo.get("name", "")) == norm_project
+                or _norm(repo.get("full_name", "")) == norm_project
+            ) else "possible",
         }
 
         # Son commitler + gerçek haftalık aktivite özeti.
