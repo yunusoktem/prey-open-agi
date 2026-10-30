@@ -649,6 +649,31 @@ Araştırma kaynakları:
 {source_text}
 """
 
+    # Workspace görevleri proje araştırma kontrol listesine zorlanmamalı.
+    # Bu yol, kullanıcının istediği işi doğrudan yanıtlar ve aynı tek API çağrısını kullanır.
+    if system_prompt:
+        prompt = f"""
+Kullanıcının görevi:
+{proje_adi}
+
+Yanıt dili: {LANGUAGES[dil]}
+
+Yanıt kuralları:
+- Önce kullanıcının asıl isteğini yerine getir; konu dışı proje kontrol listesi üretme.
+- Sağlanan kaynakları ve bağlamı kullan. Kaynak yoksa bunu açıkça söyle.
+- Bilmediğin bilgileri, sonuçları, testleri veya işlemleri yapılmış gibi gösterme.
+- Gerekliyse uygulanabilir adımları, kodu veya sonucu doğrudan ver.
+- Belirsizlikleri ve sınırlamaları kısa ve açık biçimde belirt.
+- Kullanıcı analiz istiyorsa somut bulguları, nedenleri ve çözüm önerilerini sırala.
+- Yanıtı {LANGUAGES[dil]} dilinde ver.
+
+Bağlam:
+{json.dumps(proje_verisi, ensure_ascii=False, indent=2)}
+
+Araştırma kaynakları:
+{source_text}
+"""
+
     try:
         response = requests.post(
             API_URL,
@@ -670,13 +695,22 @@ Araştırma kaynakları:
                     {"role": "user", "content": prompt},
                 ],
                 "max_tokens": 4500,
+                "reasoning_effort": "low",
                 "temperature": 0.2,
             },
             timeout=(10, 150),
         )
         response.raise_for_status()
         data = response.json()
-        text = data["choices"][0]["message"].get("content")
+        choices = data.get("choices") or []
+        if not choices or not isinstance(choices[0].get("message"), dict):
+            raise RuntimeError("Fortytwo API yanıtında completion mesajı bulunamadı.")
+        message = choices[0]["message"]
+        text = message.get("content")
+        if isinstance(text, list):
+            text = "\n".join(
+                part.get("text", "") for part in text if isinstance(part, dict)
+            )
 
     except requests.Timeout as hata:
         logger.exception("Fortytwo API zaman aşımı.")
