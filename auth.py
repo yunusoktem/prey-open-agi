@@ -71,7 +71,9 @@ def _seed_founder():
         row = db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
         hashed = generate_password_hash(password, method="scrypt")
         if row:
-            db.execute("UPDATE users SET role='founder', password_hash=? WHERE id=?", (hashed, row["id"]))
+            # Do not silently replace a founder password hash on every worker
+            # restart; only promote the configured account.
+            db.execute("UPDATE users SET role='founder' WHERE id=?", (row["id"],))
         else:
             db.execute("INSERT INTO users(email,name,password_hash,role,created_at) VALUES(?,?,?,?,?)",
                        (email, email.split("@")[0], hashed, "founder", datetime.now(timezone.utc).isoformat()))
@@ -194,8 +196,17 @@ def _safe_next(target):
     return not parsed.netloc and target.startswith("/") and not target.startswith("//")
 
 def init_auth(app):
-    app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key:
+        if os.getenv("RENDER") or os.getenv("FLASK_ENV") == "production":
+            raise RuntimeError("SECRET_KEY must be set to a stable random value in production.")
+        secret_key = secrets.token_hex(32)
+    if len(secret_key) < 32:
+        raise RuntimeError("SECRET_KEY must contain at least 32 characters.")
+    app.secret_key = secret_key
+    # Trust Render's forwarded client IP and HTTPS scheme, but never forwarded
+    # Host headers. The app's canonical host must come from its own config.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0)
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
