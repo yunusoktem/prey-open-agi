@@ -10,7 +10,7 @@ concurrency = 1
 no_improvement_limit = 2
 
 [dataset]
-path = "../../web3.csv"
+path = "../web3.csv"
 question_column = "question"
 ground_truth_column = "ground_truth"
 category_column = "category"
