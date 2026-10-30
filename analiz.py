@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 from ipaddress import ip_address
+import socket
 
 import requests
 from dotenv import load_dotenv
@@ -96,12 +97,18 @@ def _safe_public_url(url):
 
         try:
             ip = ip_address(host)
-            if not ip.is_global:
-                return False
+            return ip.is_global
         except ValueError:
-            pass
-
-        return True
+            # Resolve hostnames and reject non-public destinations.
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+            if not addresses:
+                return False
+            for address in addresses:
+                resolved_ip = ip_address(address[4][0])
+                if not resolved_ip.is_global:
+                    return False
+            return True
     except (ValueError, TypeError):
         return False
 
