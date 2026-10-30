@@ -163,6 +163,7 @@ HTML = r"""
             font-weight: 800;
         }
 
+        .brand-wordmark{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:900;letter-spacing:.035em;line-height:1}.brand-prey{color:#36d8c4}.brand-open{color:#e8f3fa;font-weight:750;letter-spacing:.01em}
         .brand-name {
             font-weight: 800;
             font-size: 17px;
@@ -645,7 +646,7 @@ HTML = r"""
             .container { width: min(100% - 24px, 1080px); }
             .nav { min-height: 68px; gap: 10px; }
             .brand-icon { width: 36px; height: 36px; }
-            .brand-name { font-size: 14px; }
+            .brand-wordmark { font-size: 14px; }
             .brand-subtitle { font-size: 9px; letter-spacing: 1px; }
             .nav-actions { gap: 6px; }
             .theme-toggle { padding: 9px 10px; font-size: 12px; }
@@ -740,9 +741,8 @@ HTML = r"""
 <header>
     <div class="container nav">
         <div class="brand">
-            <div class="brand-icon" aria-hidden="true">P</div>
+            <div class="brand-wordmark" aria-label="Prey Open AGI"><span class="brand-prey">PREY</span><span class="brand-open">OPEN AGI</span></div>
             <div>
-                <div class="brand-name">Prey Open AGI</div>
                 <div class="brand-subtitle" id="brandSubtitle">Open Research Intelligence</div>
             </div>
         </div>
