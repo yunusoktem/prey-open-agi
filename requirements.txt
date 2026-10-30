@@ -6,3 +6,5 @@ gunicorn
 ddgs
 Markdown
 bleach
+authlib>=1.3,<2
+Flask-Limiter>=3.8,<5
