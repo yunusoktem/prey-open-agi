@@ -22,7 +22,12 @@ Required:
 - `ODS_SEARCH_PROVIDER=serper` and `SERPER_API_KEY`, OR
   `ODS_SEARCH_PROVIDER=searxng` and `SEARXNG_INSTANCE_URL`
 - `ODS_RERANKER=jina` and `JINA_API_KEY`, or
-  `ODS_RERANKER=none`
+  `ODS_RERANKER=infinity` for a separately configured self-hosted Infinity endpoint
+- A LiteLLM provider key matching `ODS_MODEL_NAME` (for example,
+  `OPENROUTER_API_KEY` for `openrouter/...`, `OPENAI_API_KEY` for `gpt-...`,
+  or `ANTHROPIC_API_KEY` for `anthropic/...`)
+- Install the optional `opendeepsearch` package and its upstream dependencies in
+  a separately validated deployment image; the base Render requirements do not include it.
 
 For SearXNG, `SEARXNG_API_KEY` is optional if the instance does not require it.
 ODS model-provider credentials must also be configured according to LiteLLM.
@@ -37,7 +42,7 @@ dedicated ODS worker/service if the deployment resource limits are insufficient.
 ## Workspace behavior
 
 - The ordinary free-search checkbox remains unchanged and off by default.
-- The ODS checkbox appears only when `ODS_ENABLED=true`.
+- The ODS checkbox appears only when `ODS_ENABLED=true`, the optional package is installed, and search, reranker and LiteLLM credentials are present.
 - ODS is never silently used as a fallback: provider/configuration errors are
   surfaced, and the user can choose the existing free search instead.
 - One Fortytwo call remains the response-generation path; ODS may make its own
