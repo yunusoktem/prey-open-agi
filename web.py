@@ -1069,7 +1069,7 @@ HTML = r"""
             label.textContent = isDark ? t.themeDark : t.themeLight;
             button.setAttribute("aria-label", isDark ? t.themeDarkAria : t.themeLightAria);
             document.documentElement.lang = code;
-            try { localStorage.setItem("prey-language", code); } catch (e) {}
+            try { localStorage.setItem("prey-language", code); document.cookie = "prey-language=" + encodeURIComponent(code) + "; Path=/; Max-Age=31536000; SameSite=Lax"; } catch (e) {}
         }
 
         function closeLanguageMenu() {
@@ -1180,7 +1180,7 @@ HTML = r"""
 @app.route("/", methods=["GET", "POST"])
 def index():
     proje_adi = ""
-    dil = "tr"
+    dil = request.args.get("lang", request.cookies.get("prey-language", "tr"))
     rapor = None
     kaynaklar = []
     github_veri = None
@@ -1188,7 +1188,7 @@ def index():
 
     if request.method == "POST":
         proje_adi = request.form.get("proje_adi", "").strip()
-        dil = request.form.get("dil", request.args.get("lang", "tr")).strip()
+        dil = request.form.get("dil", request.args.get("lang", request.cookies.get("prey-language", "tr"))).strip()
 
         if dil not in LANGUAGES:
             dil = "tr"
@@ -1255,7 +1255,7 @@ COMPARE_HTML = r"""
 <title>{{ t.page_title }} · Prey Open AGI</title>
 <style>
 :root{color-scheme:dark;--bg:#07131d;--panel:#102330;--line:#244151;--text:#e8f3fa;--muted:#a6bbc8;--a:#29d8c2;--b:#64aaff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#123747 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif}.wrap{max-width:1100px;margin:auto;padding:28px 18px 60px}a{color:#70dff0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.brand{font-weight:800;font-size:19px}.pill{border:1px solid var(--line);border-radius:99px;padding:7px 12px;text-decoration:none}.hero{padding:25px 0 15px}.eyebrow{color:var(--a);letter-spacing:.15em;font-size:11px;font-weight:800}.hero h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:8px 0}.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#112633,#0b1c28);border:1px solid var(--line);border-radius:18px;padding:22px;margin:18px 0;box-shadow:0 18px 60px #0002}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input,select{width:100%;background:#071722;color:var(--text);border:1px solid #2b4859;border-radius:10px;padding:13px;font:inherit}.btn{margin-top:15px;border:0;border-radius:10px;padding:13px 18px;background:linear-gradient(100deg,#27d9bf,#62a7ff);color:#04131b;font-weight:800;cursor:pointer;width:100%}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{background:#0a1a25;border:1px solid var(--line);border-radius:12px;padding:14px}.metric strong{font-size:22px;display:block}.metric small{color:var(--muted)}.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tag{display:inline-block;background:#183a47;border-radius:99px;padding:3px 9px;font-size:12px}.warn{color:#ffce80}.report h1,.report h2,.report h3{line-height:1.25}.report table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}.report td,.report th{border:1px solid var(--line);padding:8px;text-align:left}.sources a{overflow-wrap:anywhere}.loading{opacity:.8}@media(max-width:680px){.formgrid,.cols,.metrics{grid-template-columns:1fr}.panel{padding:16px}}
-</style></head><body><div class="wrap"><div class="top"><div class="brand">PREY OPEN AGI <span class="tag">{{ t.lab }}</span></div><a class="pill" href="/">← {{ t.home }}</a></div>
+</style></head><body><div class="wrap"><div class="top"><div class="brand">PREY OPEN AGI <span class="tag">{{ t.lab }}</span></div><a class="pill" href="/?lang={{ dil }}">← {{ t.home }}</a></div>
 <div class="hero"><div class="eyebrow">{{ t.eyebrow }}</div><h1>{{ t.hero }}</h1><p class="muted">{{ t.description }}</p></div>
 <section class="panel"><form method="post"><div class="formgrid"><div><label for="project_a">{{ t.project_a }}</label><input id="project_a" name="project_a" value="{{ a }}" placeholder="{{ t.example_a }}" required></div><div><label for="project_b">{{ t.project_b }}</label><input id="project_b" name="project_b" value="{{ b }}" placeholder="{{ t.example_b }}" required></div></div><div style="margin-top:14px"><label for="dil">{{ t.report_language }}</label><select id="dil" name="dil">{% for code,name in languages.items() %}<option value="{{code}}" {% if code==dil %}selected{% endif %}>{{name}}</option>{% endfor %}</select></div><button class="btn" type="submit">↔ {{ t.compare }}</button><p class="muted" style="font-size:12px">{{ t.form_note }}</p></form></section>
 {% if error %}<section class="panel warn">{{ error }}</section>{% endif %}
