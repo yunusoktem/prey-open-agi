@@ -1,0 +1,4 @@
+question,ground_truth,category
+"Does a token listing guarantee sustainable price appreciation?","No. A listing may improve access or liquidity, but price depends on demand, supply, unlocks, liquidity, utility, market conditions, and selling pressure.","markets"
+"What should be checked before describing a token's utility?","Official token documentation, live product integrations, contract or governance evidence, and whether the utility is active rather than merely planned.","utility"
+"How should an unverified partnership claim be handled?","Do not present it as fact; seek confirmation from both parties or authoritative primary sources and label uncertainty clearly.","verification"
