@@ -32,9 +32,9 @@ def is_ods_configured() -> bool:
         return False
 
     reranker = os.getenv("ODS_RERANKER", "jina").strip().lower()
-    if reranker not in {"jina", "infinity"}:
+    if reranker != "jina":
         return False
-    if reranker == "jina" and not os.getenv("JINA_API_KEY"):
+    if not os.getenv("JINA_API_KEY"):
         return False
 
     # ODS uses LiteLLM independently of Fortytwo. Require the provider-specific
