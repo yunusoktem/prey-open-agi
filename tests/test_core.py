@@ -21,8 +21,15 @@ class CoreSafetyTests(unittest.TestCase):
         ):
             self.assertFalse(analiz._safe_public_url(url), url)
 
-    def test_public_https_url_is_accepted(self):
+    @patch("analiz.socket.getaddrinfo")
+    def test_public_https_url_is_accepted(self, resolve):
+        resolve.return_value = [(2, 1, 6, "", ("93.184.216.34", 443))]
         self.assertTrue(analiz._safe_public_url("https://example.com/docs"))
+
+    @patch("analiz.socket.getaddrinfo")
+    def test_hostname_resolving_to_private_ip_is_rejected(self, resolve):
+        resolve.return_value = [(2, 1, 6, "", ("10.0.0.8", 443))]
+        self.assertFalse(analiz._safe_public_url("https://attacker.example"))
 
     def test_free_search_uses_bounded_query_count(self):
         self.assertEqual(len(analiz._search_queries("Example Protocol")), 4)
