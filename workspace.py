@@ -23,7 +23,7 @@ def register_workspace(app, render_report):
  def workspace():
   mode = request.form.get("mode", "research")
   if mode not in MODES: mode = "research"
-  lang = request.form.get("lang", request.args.get("lang", "tr"))
+  lang = request.form.get("lang", request.args.get("lang", request.cookies.get("prey-language", "tr")))
   if lang not in LANGUAGES: lang = "tr"
   t = T.get(lang, T["tr"])
   task = request.form.get("task", "").strip()
