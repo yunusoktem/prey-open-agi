@@ -1278,7 +1278,7 @@ COMPARE_TRANSLATIONS = {
 def compare_projects():
     a = request.form.get("project_a", "").strip()
     b = request.form.get("project_b", "").strip()
-    dil = request.form.get("dil", "tr").strip()
+    dil = request.form.get("dil", request.args.get("lang", request.cookies.get("prey-language", "tr"))).strip()
     if dil not in LANGUAGES:
         dil = "tr"
     result = None
