@@ -1,0 +1,4 @@
+question,ground_truth,category
+"What is the safest way to introduce an optional dependency into a production web app?","Keep it isolated behind lazy imports and an explicit feature flag, validate configuration, bound resource use, and test both enabled and disabled paths.","architecture"
+"What should a code change do when an optional external service fails?","Return a clear bounded error, log diagnostic details safely, preserve existing functionality, and never silently claim success or fabricate fallback data.","reliability"
+"How should a URL fetcher defend against SSRF?","Allow only HTTP(S), reject local and private IP destinations, validate DNS results, revalidate every redirect target, and enforce timeouts and response-size limits.","security"
