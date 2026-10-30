@@ -108,17 +108,13 @@ def _safe_public_url(url):
 
 def _search_queries(project):
     """Projeyi farklı başlıklardan araştırır; sonuç bulunmayan alanlar raporda eksik olarak belirtilir."""
+    # Keep discovery bounded: DDGS providers are rate-limited and each query
+    # can trigger several upstream engines. Broad queries preserve coverage.
     return [
-        f'"{project}" official website',
-        f'"{project}" official documentation technical architecture',
-        f'"{project}" GitHub source code repositories',
-        f'"{project}" product launch mainnet testnet roadmap release',
-        f'"{project}" team founders investors funding partners',
-        f'"{project}" tokenomics token supply vesting unlock official',
-        f'"{project}" token exchange listing market data official',
-        f'"{project}" security audit incident bug bounty',
-        f'"{project}" governance community ecosystem integrations',
-        f'"{project}" latest news announcement 2026',
+        f'"{project}" official website documentation architecture product',
+        f'"{project}" GitHub repository development release roadmap',
+        f'"{project}" tokenomics team funding partnerships ecosystem',
+        f'"{project}" security audit latest announcement',
     ]
 
 
