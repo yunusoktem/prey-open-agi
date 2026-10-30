@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask, request, render_template_string, url_for
+from auth import init_auth
 from markupsafe import Markup, escape
 import markdown
 import bleach
@@ -14,6 +15,7 @@ from analiz import (
 )
 
 app = Flask(__name__)
+init_auth(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -746,6 +748,16 @@ HTML = r"""
         </div>
 
         <div class="nav-actions">
+            {% if current_user %}
+            <span style="display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:11px">
+                {{ current_user.name }}
+                {% if current_user.role == 'founder' %}<strong style="color:var(--accent)">FOUNDER</strong>{% endif %}
+            </span>
+            <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline;margin:0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="language-toggle">Sign out</button>
+            </form>
+            {% endif %}
             <a class="language-toggle" href="/workspace" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">✦ AI Workspace</a>
             <a class="language-toggle" href="/compare" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">⇄ Compare Projects</a>
             <div class="language-menu" id="languageMenu">
