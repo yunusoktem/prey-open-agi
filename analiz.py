@@ -569,6 +569,7 @@ def ai_analizi(
     proje_verisi=None,
     arama_sonuclari=None,
     dil="tr",
+    system_prompt=None,
 ):
     """Fortytwo ile kaynaklı ve çok dilli araştırma raporu üretir."""
     if not API_KEY:
@@ -657,7 +658,17 @@ Araştırma kaynakları:
             },
             json={
                 "model": MODEL,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt or (
+                            "You are Prey Open AGI, a careful research assistant. "
+                            "Follow the user's task, distinguish evidence from assumptions, "
+                            "and never invent facts or sources."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
                 "max_tokens": 4500,
                 "temperature": 0.2,
             },
