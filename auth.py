@@ -17,6 +17,7 @@ from flask import (
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 oauth = OAuth()
@@ -194,6 +195,7 @@ def _safe_next(target):
 
 def init_auth(app):
     app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
