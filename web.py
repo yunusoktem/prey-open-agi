@@ -1064,7 +1064,7 @@ HTML = r"""
             set("githubStarsLabel", t.stars); set("githubForksLabel", t.forks); set("githubIssuesLabel", t.issues); set("githubLanguageLabel", t.mainLanguage); set("commitsTitle", t.commits);
             set("liveMetricsTitle", t.liveTitle); set("commits30Label", t.commits30); set("commits90Label", t.commits90); set("lastPushLabel", t.lastPush); set("watchersLabel", t.watchers); set("activityTitle", t.activityTitle); set("activityNote", t.activityNote);
             set("footerText", t.footer);
-            const input = document.getElementById("projectInput"); if (input) input.placeholder = t.placeholder;
+            const input = document.getElementById("proje_adi"); if (input) input.placeholder = t.placeholder;
             const isDark = root.dataset.theme !== "light";
             label.textContent = isDark ? t.themeDark : t.themeLight;
             button.setAttribute("aria-label", isDark ? t.themeDarkAria : t.themeLightAria);
