@@ -17,6 +17,13 @@ class ROMAAdapterTests(unittest.TestCase):
         }, clear=True):
             self.assertFalse(is_roma_available())
 
+    def test_openrouter_key_alone_does_not_match_default_model(self):
+        with patch.dict(os.environ, {
+            "PREY_ROMA_ENABLED": "true",
+            "OPENROUTER_API_KEY": "test-key",
+        }, clear=True):
+            self.assertFalse(is_roma_available())
+
     def test_empty_task_is_rejected(self):
         with self.assertRaises(ValueError):
             run_roma(" ")
