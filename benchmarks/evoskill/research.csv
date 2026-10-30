@@ -1,0 +1,4 @@
+question,ground_truth,category
+"What is the difference between a protocol's announced feature and a feature verified in production?","An announcement is a claim; production status requires evidence such as a live deployment, official documentation, release notes, or reproducible usage.","evidence"
+"How should conflicting token supply figures be reported?","Report each figure with its source and date, explain the discrepancy, and do not select one without sufficient evidence.","tokenomics"
+"What evidence is required before claiming a project has launched mainnet?","A verifiable official mainnet announcement plus chain, explorer, deployment, or operational evidence; otherwise label the status unverified.","verification"
