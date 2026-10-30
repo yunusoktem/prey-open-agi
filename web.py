@@ -1,7 +1,7 @@
 import os
 import logging
 from flask import Flask, request, render_template_string, url_for
-from auth import init_auth
+from auth import init_auth, _check_csrf
 from markupsafe import Markup, escape
 import markdown
 import bleach
@@ -827,6 +827,7 @@ HTML = r"""
         <p class="panel-description" id="searchDescription">Proje adını gir; web kaynaklarını, GitHub geliştirme verilerini ve AI analizini bir arada incele.</p>
 
         <form method="POST" action="/" id="researchForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-grid">
                 <div>
                     <label for="proje_adi" id="projectLabel">Proje adı veya araştırma konusu</label>
@@ -1181,6 +1182,8 @@ HTML = r"""
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if request.method == "POST":
+        _check_csrf()
     proje_adi = ""
     dil = request.args.get("lang", request.cookies.get("prey-language", "tr"))
     rapor = None
@@ -1259,7 +1262,7 @@ COMPARE_HTML = r"""
 :root{color-scheme:dark;--bg:#07131d;--panel:#102330;--line:#244151;--text:#e8f3fa;--muted:#a6bbc8;--a:#29d8c2;--b:#64aaff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#123747 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif}.wrap{max-width:1100px;margin:auto;padding:28px 18px 60px}a{color:#70dff0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}.brand{font-weight:800;font-size:19px}.pill{border:1px solid var(--line);border-radius:99px;padding:7px 12px;text-decoration:none}.hero{padding:25px 0 15px}.eyebrow{color:var(--a);letter-spacing:.15em;font-size:11px;font-weight:800}.hero h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:8px 0}.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#112633,#0b1c28);border:1px solid var(--line);border-radius:18px;padding:22px;margin:18px 0;box-shadow:0 18px 60px #0002}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input,select{width:100%;background:#071722;color:var(--text);border:1px solid #2b4859;border-radius:10px;padding:13px;font:inherit}.btn{margin-top:15px;border:0;border-radius:10px;padding:13px 18px;background:linear-gradient(100deg,#27d9bf,#62a7ff);color:#04131b;font-weight:800;cursor:pointer;width:100%}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{background:#0a1a25;border:1px solid var(--line);border-radius:12px;padding:14px}.metric strong{font-size:22px;display:block}.metric small{color:var(--muted)}.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.brand-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.brand-wordmark{display:flex;align-items:baseline;gap:7px;white-space:nowrap;font-size:19px;font-weight:900;letter-spacing:.025em;line-height:1.1}.brand-prey{color:#36d8c4}.brand-open{color:#e8f3fa;font-weight:800;letter-spacing:0}.tag{display:inline-block;background:#183a47;border-radius:99px;padding:3px 9px;font-size:12px}.warn{color:#ffce80}.report h1,.report h2,.report h3{line-height:1.25}.report table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}.report td,.report th{border:1px solid var(--line);padding:8px;text-align:left}.sources a{overflow-wrap:anywhere}.loading{opacity:.8}@media(max-width:680px){.formgrid,.cols,.metrics{grid-template-columns:1fr}.panel{padding:16px}}
 </style></head><body><div class="wrap"><div class="top"><div class="brand"><div class="brand-copy"><div class="brand-wordmark" aria-label="Prey Open AGI"><span class="brand-prey">PREY</span><span class="brand-open">OPEN AGI</span></div></div><span class="tag">{{ t.lab }}</span></div><a class="pill" href="/?lang={{ dil }}">← {{ t.home }}</a></div>
 <div class="hero"><div class="eyebrow">{{ t.eyebrow }}</div><h1>{{ t.hero }}</h1><p class="muted">{{ t.description }}</p></div>
-<section class="panel"><form method="post"><div class="formgrid"><div><label for="project_a">{{ t.project_a }}</label><input id="project_a" name="project_a" value="{{ a }}" placeholder="" required></div><div><label for="project_b">{{ t.project_b }}</label><input id="project_b" name="project_b" value="{{ b }}" placeholder="" required></div></div><div style="margin-top:14px"><label for="dil">{{ t.report_language }}</label><select id="dil" name="dil">{% for code,name in languages.items() %}<option value="{{code}}" {% if code==dil %}selected{% endif %}>{{name}}</option>{% endfor %}</select></div><button class="btn" type="submit">↔ {{ t.compare }}</button><p class="muted" style="font-size:12px">{{ t.form_note }}</p></form></section>
+<section class="panel"><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="formgrid"><div><label for="project_a">{{ t.project_a }}</label><input id="project_a" name="project_a" value="{{ a }}" placeholder="" required></div><div><label for="project_b">{{ t.project_b }}</label><input id="project_b" name="project_b" value="{{ b }}" placeholder="" required></div></div><div style="margin-top:14px"><label for="dil">{{ t.report_language }}</label><select id="dil" name="dil">{% for code,name in languages.items() %}<option value="{{code}}" {% if code==dil %}selected{% endif %}>{{name}}</option>{% endfor %}</select></div><button class="btn" type="submit">↔ {{ t.compare }}</button><p class="muted" style="font-size:12px">{{ t.form_note }}</p></form></section>
 {% if error %}<section class="panel warn">{{ error }}</section>{% endif %}
 {% if result %}<section class="panel"><h2>{{ t.live_signals }}</h2><div class="cols">{% for item in result.github %}<div class="metric"><h3>{{ item.project }}</h3>{% if item.data %}<p><a href="{{item.data.url}}" target="_blank" rel="noopener">{{item.data.name}}</a></p>{% if not item.data.is_exact_match %}<p class="warn">{{ t.possible_match }}</p>{% endif %}<div class="metrics"><div class="metric"><strong>{{ item.data.stars if item.data.stars is not none else '—' }}</strong><small>{{ t.stars }}</small></div><div class="metric"><strong>{{ item.data.forks if item.data.forks is not none else '—' }}</strong><small>{{ t.forks }}</small></div><div class="metric"><strong>{{ item.data.commits_last_30_days if item.data.commits_last_30_days is not none else '—' }}</strong><small>{{ t.commits30 }}</small></div><div class="metric"><strong>{{ item.data.commits_last_90_days if item.data.commits_last_90_days is not none else '—' }}</strong><small>{{ t.commits90 }}</small></div></div><p class="muted">{{ t.language }}: {{item.data.language or t.unknown}} · {{ t.last_push }}: {{item.data.pushed_at or t.unknown}}</p>{% else %}<p class="warn">{{ t.no_repo }}</p>{% endif %}</div>{% endfor %}</div></section>
 <section class="panel"><h2>{{ t.research_comparison }}</h2><p class="muted">{{ t.research_note }}</p><div class="report">{{ result.report|safe }}</div></section>
@@ -1278,6 +1281,8 @@ COMPARE_TRANSLATIONS = {
 
 @app.route("/compare", methods=["GET", "POST"])
 def compare_projects():
+    if request.method == "POST":
+        _check_csrf()
     a = request.form.get("project_a", "").strip()
     b = request.form.get("project_b", "").strip()
     dil = request.form.get("dil", request.args.get("lang", request.cookies.get("prey-language", "tr"))).strip()
