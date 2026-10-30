@@ -142,6 +142,8 @@ HTML = r"""
             gap: 16px;
         }
 
+        .brand-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+
         .brand {
             display: flex;
             align-items: center;
@@ -163,7 +165,7 @@ HTML = r"""
             font-weight: 800;
         }
 
-        .brand-wordmark{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:900;letter-spacing:.035em;line-height:1}.brand-prey{color:#36d8c4}.brand-open{color:#e8f3fa;font-weight:750;letter-spacing:.01em}
+        .brand-wordmark{display:flex;align-items:baseline;gap:7px;white-space:nowrap;font-size:19px;font-weight:900;letter-spacing:.025em;line-height:1.1}.brand-prey{color:#36d8c4}.brand-open{color:#e8f3fa;font-weight:800;letter-spacing:0}
         .brand-name {
             font-weight: 800;
             font-size: 17px;
@@ -172,7 +174,7 @@ HTML = r"""
         }
 
         .brand-subtitle {
-            margin-top: 4px;
+            margin-top: 6px;
             font-size: 11px;
             color: var(--muted);
             letter-spacing: 1.5px;
@@ -741,8 +743,8 @@ HTML = r"""
 <header>
     <div class="container nav">
         <div class="brand">
-            <div class="brand-wordmark" aria-label="Prey Open AGI"><span class="brand-prey">PREY</span><span class="brand-open">OPEN AGI</span></div>
-            <div>
+            <div class="brand-copy">
+                <div class="brand-wordmark" aria-label="Prey Open AGI"><span class="brand-prey">PREY</span><span class="brand-open">OPEN AGI</span></div>
                 <div class="brand-subtitle" id="brandSubtitle">Open Research Intelligence</div>
             </div>
         </div>
