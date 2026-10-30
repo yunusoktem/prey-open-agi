@@ -18,20 +18,31 @@ class ODSError(RuntimeError):
 
 
 def is_ods_configured() -> bool:
-    provider = os.getenv("ODS_SEARCH_PROVIDER", "serper").strip().lower()
-    has_search = (
-        bool(os.getenv("SERPER_API_KEY"))
-        if provider == "serper"
-        else bool(os.getenv("SEARXNG_INSTANCE_URL"))
-        if provider == "searxng"
-        else False
-    )
-    reranker = os.getenv("ODS_RERANKER", "jina").strip().lower()
-    has_reranker = reranker == "none" or (
-        bool(os.getenv("JINA_API_KEY")) if reranker == "jina" else False
-    )
-    return has_search and has_reranker and bool(os.getenv("ODS_MODEL_NAME"))
+    """Return true only when the optional ODS runtime and credentials exist."""
+    import importlib.util
 
+    if importlib.util.find_spec("opendeepsearch") is None:
+        return False
+    provider = os.getenv("ODS_SEARCH_PROVIDER", "serper").strip().lower()
+    if provider == "serper":
+        has_search = bool(os.getenv("SERPER_API_KEY"))
+    elif provider == "searxng":
+        has_search = bool(os.getenv("SEARXNG_INSTANCE_URL"))
+    else:
+        return False
+
+    reranker = os.getenv("ODS_RERANKER", "jina").strip().lower()
+    if reranker not in {"jina", "infinity"}:
+        return False
+    if reranker == "jina" and not os.getenv("JINA_API_KEY"):
+        return False
+
+    # ODS uses LiteLLM independently of Fortytwo. The selected provider's
+    # credentials must be configured separately; do not silently spend
+    # Fortytwo credits or imply that Fortytwo is powering ODS.
+    return has_search and bool(os.getenv("ODS_MODEL_NAME")) and bool(
+        os.getenv("ODS_LLM_API_KEY")
+    )
 
 def search_with_ods(query: str, max_results: int = 5) -> list[dict[str, str]]:
     """Run ODS only when explicitly enabled and fully configured."""
@@ -58,7 +69,9 @@ def search_with_ods(query: str, max_results: int = 5) -> list[dict[str, str]]:
     reranker = os.getenv("ODS_RERANKER", "jina").strip().lower()
     kwargs: dict[str, Any] = {
         "model_name": os.environ["ODS_MODEL_NAME"],
-        "reranker": None if reranker == "none" else reranker,
+        "serper_api_key": os.getenv("SERPER_API_KEY"),
+        "jina_api_key": os.getenv("JINA_API_KEY"),
+        "reranker": reranker,
     }
     if provider == "searxng":
         kwargs.update({
