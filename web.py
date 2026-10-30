@@ -48,6 +48,10 @@ def render_report(text):
     return Markup(clean_html)
 
 
+from workspace import register_workspace
+register_workspace(app, render_report)
+
+
 HTML = r"""
 <!DOCTYPE html>
 <html lang="tr" data-theme="dark">
@@ -742,6 +746,7 @@ HTML = r"""
         </div>
 
         <div class="nav-actions">
+            <a class="language-toggle" href="/workspace" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">✦ AI Workspace</a>
             <a class="language-toggle" href="/compare" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px">⇄ Compare Projects</a>
             <div class="language-menu" id="languageMenu">
                 <button
