@@ -1051,6 +1051,8 @@ HTML = r"""
             const set = (id, value) => { const el = document.getElementById(id); if (el && value) el.textContent = value; };
             set("brandSubtitle", t.brandSubtitle); set("heroEyebrow", t.eyebrow);
             set("signOutLabel", t.signOut); set("workspaceNavLabel", t.workspaceNav); set("compareNavLabel", t.compareNav); set("founderBadge", t.founder);
+            const workspaceLink = document.querySelector('a[href^="/workspace"]'); if (workspaceLink) workspaceLink.href = "/workspace?lang=" + encodeURIComponent(code);
+            const compareLink = document.querySelector('a[href^="/compare"]'); if (compareLink) compareLink.href = "/compare?lang=" + encodeURIComponent(code);
             const heroTitle = document.getElementById("heroTitle");
             if (heroTitle) heroTitle.innerHTML = code === "tr" ? 'Açık Zekâyı <span class="gradient-text">Keşfet</span>' : code === "en" ? 'Explore <span class="gradient-text">Open Intelligence</span>' : t.heroTitle;
             set("heroDescription", t.heroDescription); set("featureResearchTitle", t.featureResearchTitle); set("featureResearchText", t.featureResearchText);
@@ -1186,7 +1188,7 @@ def index():
 
     if request.method == "POST":
         proje_adi = request.form.get("proje_adi", "").strip()
-        dil = request.form.get("dil", "tr").strip()
+        dil = request.form.get("dil", request.args.get("lang", "tr")).strip()
 
         if dil not in LANGUAGES:
             dil = "tr"
