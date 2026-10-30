@@ -21,8 +21,7 @@ Required:
 - `ODS_MODEL_NAME=<LiteLLM-supported-model-id>`
 - `ODS_SEARCH_PROVIDER=serper` and `SERPER_API_KEY`, OR
   `ODS_SEARCH_PROVIDER=searxng` and `SEARXNG_INSTANCE_URL`
-- `ODS_RERANKER=jina` and `JINA_API_KEY`, or
-  `ODS_RERANKER=infinity` for a separately configured self-hosted Infinity endpoint
+- `ODS_RERANKER=jina` and `JINA_API_KEY` (the current adapter validates Jina only)
 - A LiteLLM provider key matching `ODS_MODEL_NAME` (for example,
   `OPENROUTER_API_KEY` for `openrouter/...`, `OPENAI_API_KEY` for `gpt-...`,
   or `ANTHROPIC_API_KEY` for `anthropic/...`)
