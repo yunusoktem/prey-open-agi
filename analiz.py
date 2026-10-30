@@ -74,8 +74,13 @@ class _TextExtractor(HTMLParser):
 
 
 def _norm(value):
-    value = str(value or "").casefold()
-    return re.sub(r"[^a-z0-9]+", " ", value).strip()
+    """Normalize Unicode text without discarding non-Latin project names."""
+    import unicodedata
+
+    value = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    return " ".join(
+        "".join(ch if ch.isalnum() else " " for ch in value).split()
+    )
 
 
 def _safe_public_url(url):
@@ -161,13 +166,32 @@ def _fetch_page_text(url):
         return ""
 
     try:
-        response = requests.get(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=REQUEST_TIMEOUT,
-            allow_redirects=True,
-            stream=True,
-        )
+        # Follow redirects manually so every destination is validated before
+        # the server makes a request to it (prevents redirect-based SSRF).
+        current_url = url
+        response = None
+        for _ in range(5):
+            response = requests.get(
+                current_url,
+                headers={"User-Agent": USER_AGENT},
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=False,
+                stream=True,
+            )
+            if response.is_redirect or response.is_permanent_redirect:
+                location = response.headers.get("Location")
+                response.close()
+                if not location:
+                    return ""
+                current_url = urljoin(current_url, location)
+                if not _safe_public_url(current_url):
+                    return ""
+                continue
+            break
+        else:
+            if response is not None:
+                response.close()
+            return ""
         try:
             if not response.ok:
                 return ""
