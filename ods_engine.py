@@ -37,12 +37,22 @@ def is_ods_configured() -> bool:
     if reranker == "jina" and not os.getenv("JINA_API_KEY"):
         return False
 
-    # ODS uses LiteLLM independently of Fortytwo. The selected provider's
-    # credentials must be configured separately; do not silently spend
-    # Fortytwo credits or imply that Fortytwo is powering ODS.
-    return has_search and bool(os.getenv("ODS_MODEL_NAME")) and bool(
-        os.getenv("ODS_LLM_API_KEY")
-    )
+    # ODS uses LiteLLM independently of Fortytwo. Require the provider-specific
+    # LiteLLM credential rather than accepting an unused generic key.
+    model = os.getenv("ODS_MODEL_NAME", "").strip().lower()
+    if model.startswith("openrouter/"):
+        has_model_key = bool(os.getenv("OPENROUTER_API_KEY"))
+    elif model.startswith("anthropic/"):
+        has_model_key = bool(os.getenv("ANTHROPIC_API_KEY"))
+    elif model.startswith(("gemini/", "google/")):
+        has_model_key = bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+    elif model.startswith("fireworks_ai/"):
+        has_model_key = bool(os.getenv("FIREWORKS_AI_API_KEY") or os.getenv("FIREWORKS_API_KEY"))
+    elif model.startswith(("openai/", "gpt-")):
+        has_model_key = bool(os.getenv("OPENAI_API_KEY"))
+    else:
+        has_model_key = bool(os.getenv("LITELLM_MODEL_API_KEY"))
+    return has_search and bool(model) and has_model_key
 
 def search_with_ods(query: str, max_results: int = 5) -> list[dict[str, str]]:
     """Run ODS only when explicitly enabled and fully configured."""
