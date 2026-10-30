@@ -300,7 +300,7 @@ def webde_ara(proje_adi, max_sonuc=6):
 
     # Zayıf eşleşmeleri çıkar. Hiç sonuç kalırsa sessizce uydurma yapma.
     relevant = [item for item in ranked if item["puan"] >= 2]
-    selected = relevant[:max_sonuc * 2]
+    selected = relevant[:max_sonuc]
 
     if not selected and errors and not raw_results:
         raise RuntimeError(
