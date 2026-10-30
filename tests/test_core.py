@@ -29,7 +29,7 @@ class CoreSafetyTests(unittest.TestCase):
 
     def test_mode_skills_are_loaded_from_repository(self):
         self.assertIn("research", load_mode_skills("research").lower())
-        self.assertIn("security", load_mode_skills("coding").lower())
+        self.assertIn("ssrf", load_mode_skills("coding").lower())
         self.assertEqual(load_mode_skills("../../etc/passwd"), "")
 
     def test_ods_is_not_advertised_without_runtime_and_credentials(self):
